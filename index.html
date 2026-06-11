@@ -63,11 +63,51 @@
     .subtitle {
       font-weight: 400;
       color: #9aa0b5;
-      margin-bottom: 14px;
+      margin-bottom: 10px;
       font-size: 0.8rem;
       background: rgba(255, 255, 255, 0.04);
       padding: 4px 16px;
       border-radius: 24px;
+    }
+
+    /* Переключатель режимов */
+    .mode-selector {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 14px;
+      background: rgba(16, 19, 28, 0.7);
+      border-radius: 40px;
+      padding: 4px;
+      width: 100%;
+      max-width: 380px;
+    }
+
+    .mode-btn {
+      flex: 1;
+      padding: 10px 8px;
+      border-radius: 36px;
+      border: none;
+      background: transparent;
+      color: #8890aa;
+      font-weight: 600;
+      font-size: 0.75rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      white-space: nowrap;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      touch-action: manipulation;
+    }
+
+    .mode-btn.active {
+      background: linear-gradient(135deg, #f5a623, #c97a0a);
+      color: #0a0c12;
+      box-shadow: 0 4px 12px rgba(245, 166, 35, 0.35);
+      font-weight: 700;
+    }
+
+    .mode-btn:active {
+      transform: scale(0.96);
     }
 
     .video-wrapper {
@@ -90,7 +130,7 @@
       height: 100%;
       object-fit: cover;
       display: block;
-      transform: scaleX(-1); /* Зеркальное отображение для удобства */
+      transform: scaleX(-1);
     }
 
     canvas {
@@ -103,7 +143,7 @@
       flex-wrap: wrap;
       align-items: center;
       justify-content: center;
-      gap: 16px;
+      gap: 14px;
       margin-bottom: 18px;
       width: 100%;
     }
@@ -113,7 +153,7 @@
       backdrop-filter: blur(14px);
       -webkit-backdrop-filter: blur(14px);
       border-radius: 80px;
-      padding: 10px 24px;
+      padding: 10px 20px;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -135,9 +175,9 @@
 
     .count-label, .timer-label {
       font-weight: 600;
-      font-size: 0.75rem;
+      font-size: 0.7rem;
       text-transform: uppercase;
-      letter-spacing: 1.2px;
+      letter-spacing: 1px;
       color: #a0a9c4;
     }
 
@@ -146,26 +186,26 @@
     }
 
     .count-number {
-      font-size: clamp(2.5rem, 10vw, 3.3rem);
+      font-size: clamp(2.2rem, 8vw, 2.8rem);
       font-weight: 700;
       background: linear-gradient(to bottom, #ffe79e, #e6961c);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       background-clip: text;
       line-height: 1;
-      min-width: 56px;
+      min-width: 48px;
       text-align: center;
     }
 
     .timer-number {
-      font-size: clamp(2rem, 7vw, 2.6rem);
+      font-size: clamp(1.7rem, 6vw, 2.2rem);
       font-weight: 700;
       background: linear-gradient(to bottom, #c2e0ff, #4d8fda);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       background-clip: text;
       line-height: 1;
-      min-width: 70px;
+      min-width: 60px;
       text-align: center;
       font-variant-numeric: tabular-nums;
       letter-spacing: 1px;
@@ -173,10 +213,10 @@
 
     .state-badge {
       background: #262d3b;
-      padding: 8px 18px;
+      padding: 8px 16px;
       border-radius: 36px;
       font-weight: 600;
-      font-size: 0.75rem;
+      font-size: 0.7rem;
       color: #cfd7ea;
       display: flex;
       align-items: center;
@@ -201,7 +241,7 @@
 
     .controls {
       display: flex;
-      gap: 14px;
+      gap: 12px;
       flex-wrap: wrap;
       justify-content: center;
       margin: 4px 0 10px;
@@ -211,11 +251,11 @@
     .btn {
       background: #2f3547;
       border: none;
-      padding: 13px 24px;
+      padding: 13px 20px;
       border-radius: 48px;
       font-weight: 700;
-      font-size: 0.95rem;
-      letter-spacing: 0.6px;
+      font-size: 0.9rem;
+      letter-spacing: 0.5px;
       color: #eef3ff;
       cursor: pointer;
       background: linear-gradient(135deg, #3b4254, #242a38);
@@ -223,12 +263,12 @@
       transition: all 0.15s ease;
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 6px;
       border: 1px solid rgba(255,255,255,0.05);
       text-transform: uppercase;
       flex: 1;
       justify-content: center;
-      min-width: 110px;
+      min-width: 100px;
       touch-action: manipulation;
     }
 
@@ -257,47 +297,56 @@
     }
 
     .guide-text {
-      font-size: 0.7rem;
+      font-size: 0.68rem;
       color: #7e869c;
       margin-top: 6px;
       display: flex;
       align-items: center;
-      gap: 5px;
+      gap: 4px;
       text-align: center;
+      padding: 0 8px;
     }
 
-    /* Адаптация под маленькие экраны */
     @media (max-width: 400px) {
       .container {
         padding: 12px 10px 20px;
         border-radius: 24px;
       }
       .btn {
-        padding: 12px 16px;
-        font-size: 0.85rem;
+        padding: 12px 14px;
+        font-size: 0.8rem;
         gap: 4px;
       }
       .stats-panel {
-        gap: 10px;
+        gap: 8px;
       }
       .counter-panel, .timer-panel {
-        padding: 8px 16px;
-        gap: 4px;
+        padding: 8px 14px;
+      }
+      .mode-btn {
+        font-size: 0.7rem;
+        padding: 8px 6px;
       }
     }
   </style>
 </head>
 <body>
 <div class="container">
-  <h1>🏋️ Рывок гири</h1>
-  <div class="subtitle">MediaPipe Pose · мобильная версия</div>
+  <h1>🏋️ Гиревой спорт</h1>
+  <div class="subtitle">MediaPipe Pose · отслеживание</div>
+
+  <!-- Переключатель режимов -->
+  <div class="mode-selector" id="modeSelector">
+    <button class="mode-btn active" data-mode="snatch">Рывок</button>
+    <button class="mode-btn" data-mode="jerk">Толчок</button>
+    <button class="mode-btn" data-mode="fullCycle">Полный цикл</button>
+  </div>
 
   <div class="video-wrapper">
     <video id="inputVideo" autoplay playsinline muted></video>
     <canvas id="outputCanvas"></canvas>
   </div>
 
-  <!-- Панель с таймером и счётчиком -->
   <div class="stats-panel">
     <div class="counter-panel">
       <div class="count-box">
@@ -327,8 +376,8 @@
       <span>⏹️</span> Стоп
     </button>
   </div>
-  <div class="guide-text">
-    <span>💡 Встаньте боком. Поднимайте руку снизу вверх.</span>
+  <div class="guide-text" id="guideText">
+    <span>💡 Рывок: рука снизу вверх над плечом</span>
   </div>
 </div>
 
@@ -349,6 +398,8 @@
     const statusText = document.getElementById('statusText');
     const startBtn = document.getElementById('startBtn');
     const stopBtn = document.getElementById('stopBtn');
+    const guideText = document.getElementById('guideText');
+    const modeButtons = document.querySelectorAll('.mode-btn');
 
     // ---------- Глобальные переменные ----------
     let pose;
@@ -356,24 +407,31 @@
     let isActive = false;
     let repetitions = 0;
     
-    // Параметры оптимизации для мобильных
+    // Текущий режим
+    let currentMode = 'snatch'; // 'snatch', 'jerk', 'fullCycle'
+    
+    // Параметры оптимизации
     const MOBILE_WIDTH = 480;
     const MOBILE_HEIGHT = 360;
     const FRAME_SKIP = 2;
     let frameCounter = 0;
     
-    // Логика рывка
-    const DOWN_THRESHOLD = 0.15;
-    const UP_THRESHOLD = -0.25;
-    let armState = 'DOWN';
+    // Пороги для разных режимов
+    const SNATCH_DOWN_THRESHOLD = 0.15;    // запястье ниже плеча
+    const SNATCH_UP_THRESHOLD = -0.25;     // запястье выше плеча
+    
+    const JERK_DOWN_THRESHOLD = 0.05;      // запястье на уровне груди (чуть ниже плеча)
+    const JERK_UP_THRESHOLD = -0.25;       // запястье выше плеча
+    
+    // Состояния для конечных автоматов
+    let armState = 'DOWN'; // 'DOWN', 'UP'
     let lastArmYRelative = null;
 
-    // ---------- Переменные для таймера ----------
+    // ---------- Таймер ----------
     let timerInterval = null;
     let startTime = null;
     let elapsedSeconds = 0;
 
-    // ---------- Функции таймера ----------
     function formatTime(totalSeconds) {
       const mins = Math.floor(totalSeconds / 60);
       const secs = totalSeconds % 60;
@@ -386,12 +444,11 @@
 
     function startTimer() {
       if (timerInterval) return;
-      
       startTime = Date.now() - (elapsedSeconds * 1000);
       timerInterval = setInterval(() => {
         elapsedSeconds = Math.floor((Date.now() - startTime) / 1000);
         updateTimerDisplay();
-      }, 200); // Обновляем каждые 200мс для плавности
+      }, 200);
     }
 
     function stopTimer() {
@@ -407,7 +464,7 @@
       updateTimerDisplay();
     }
 
-    // ---------- Функции обновления UI ----------
+    // ---------- UI функции ----------
     function updateUI() {
       repCounterSpan.textContent = repetitions;
     }
@@ -424,7 +481,52 @@
       updateUI();
     }
 
-    // ---------- Обработка результатов Pose с оптимизацией кадров ----------
+    function updateGuideText() {
+      switch(currentMode) {
+        case 'snatch':
+          guideText.innerHTML = '<span>💡 Рывок: рука снизу вверх над плечом</span>';
+          break;
+        case 'jerk':
+          guideText.innerHTML = '<span>💡 Толчок: от груди вверх на вытянутые руки</span>';
+          break;
+        case 'fullCycle':
+          guideText.innerHTML = '<span>💡 Полный цикл: опускание ниже пояса → подъём над плечом</span>';
+          break;
+      }
+    }
+
+    // ---------- Переключение режимов ----------
+    modeButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        if (isActive) {
+          // Если активно, предупреждаем или просто меняем со сбросом
+          if (!confirm('Смена режима во время подсчёта сбросит счётчик и состояние. Продолжить?')) {
+            return;
+          }
+        }
+        
+        modeButtons.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentMode = btn.dataset.mode;
+        
+        resetCounterAndState();
+        updateGuideText();
+        
+        if (isActive) {
+          setStatus('Режим сменён', 'idle');
+        }
+        
+        console.log('Режим переключен на:', currentMode);
+      });
+      
+      // Мобильная поддержка
+      btn.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        btn.click();
+      });
+    });
+
+    // ---------- Обработка Pose ----------
     function onPoseResults(results) {
       frameCounter++;
       if (frameCounter % FRAME_SKIP !== 0) {
@@ -458,40 +560,102 @@
     function processPoseForReps(landmarks) {
       if (!landmarks || landmarks.length < 17) return;
       
+      // Используем правую руку как основную
       const rightShoulder = landmarks[12];
       const rightWrist = landmarks[16];
+      const rightElbow = landmarks[14];
       
-      if (rightShoulder.visibility < 0.55 || rightWrist.visibility < 0.55) {
+      if (rightShoulder.visibility < 0.5 || rightWrist.visibility < 0.5) {
         return;
       }
 
       const relativeY = rightWrist.y - rightShoulder.y;
       lastArmYRelative = relativeY;
 
+      let downThreshold, upThreshold;
+      let stateMessage = '';
+
+      // Выбираем пороги в зависимости от режима
+      switch(currentMode) {
+        case 'snatch':
+          downThreshold = SNATCH_DOWN_THRESHOLD;
+          upThreshold = SNATCH_UP_THRESHOLD;
+          stateMessage = 'Рывок';
+          break;
+        case 'jerk':
+          downThreshold = JERK_DOWN_THRESHOLD;
+          upThreshold = JERK_UP_THRESHOLD;
+          stateMessage = 'Толчок';
+          break;
+        case 'fullCycle':
+          // Полный цикл: такие же пороги как рывок, но проверяем полное движение
+          downThreshold = SNATCH_DOWN_THRESHOLD;
+          upThreshold = SNATCH_UP_THRESHOLD;
+          stateMessage = 'Цикл';
+          break;
+      }
+
+      // Конечный автомат для всех режимов
       if (armState === 'DOWN') {
-        if (relativeY < UP_THRESHOLD) {
+        // Ждём подъёма руки выше порога
+        if (relativeY < upThreshold) {
           armState = 'UP';
-          console.log('Рука вверху');
+          console.log(`${stateMessage}: рука вверху`);
+          if (isActive) setStatus('Рука вверху', 'active');
         }
       } else if (armState === 'UP') {
-        if (relativeY > DOWN_THRESHOLD) {
+        // Ждём опускания руки ниже порога
+        if (relativeY > downThreshold) {
           armState = 'DOWN';
+          
+          // Для толчка дополнительно проверяем, что локоть был выпрямлен
+          if (currentMode === 'jerk') {
+            // Проверяем угол в локте: вектор плечо-локоть и локоть-запястье
+            const elbowAngle = calculateElbowAngle(rightShoulder, rightElbow, rightWrist);
+            // Угол должен быть больше 150 градусов (почти прямая рука)
+            if (elbowAngle < 150) {
+              console.log('Толчок: рука недостаточно выпрямлена, повтор не засчитан');
+              if (isActive) setStatus('Рука внизу', 'idle');
+              return;
+            }
+          }
+          
           repetitions++;
           updateUI();
-          console.log(`Повторение! Всего: ${repetitions}`);
+          console.log(`${stateMessage}: повторение! Всего: ${repetitions}`);
+          if (isActive) setStatus('Рука внизу', 'idle');
         }
       }
       
-      if (isActive) {
-        if (armState === 'DOWN') {
-          setStatus('Рука внизу', 'idle');
-        } else {
-          setStatus('Рука вверху', 'active');
-        }
+      // Обновляем статус если не обновили внутри
+      if (isActive && armState === 'DOWN') {
+        setStatus('Рука внизу', 'idle');
       }
     }
 
-    // ---------- Инициализация MediaPipe с мобильными настройками ----------
+    // Вычисление угла в локтевом суставе
+    function calculateElbowAngle(shoulder, elbow, wrist) {
+      const vector1 = {
+        x: elbow.x - shoulder.x,
+        y: elbow.y - shoulder.y
+      };
+      const vector2 = {
+        x: wrist.x - elbow.x,
+        y: wrist.y - elbow.y
+      };
+      
+      const dotProduct = vector1.x * vector2.x + vector1.y * vector2.y;
+      const magnitude1 = Math.sqrt(vector1.x * vector1.x + vector1.y * vector1.y);
+      const magnitude2 = Math.sqrt(vector2.x * vector2.x + vector2.y * vector2.y);
+      
+      if (magnitude1 === 0 || magnitude2 === 0) return 0;
+      
+      const cosAngle = dotProduct / (magnitude1 * magnitude2);
+      const angleRad = Math.acos(Math.max(-1, Math.min(1, cosAngle)));
+      return angleRad * (180 / Math.PI);
+    }
+
+    // ---------- Инициализация MediaPipe ----------
     async function initPose() {
       pose = new Pose({
         locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`
@@ -509,7 +673,7 @@
       pose.onResults(onPoseResults);
     }
 
-    // ---------- Управление камерой с низким разрешением ----------
+    // ---------- Управление камерой ----------
     async function startCamera() {
       if (cameraInstance) return;
       
@@ -532,7 +696,7 @@
 
       try {
         await cameraInstance.start();
-        console.log('Камера запущена (моб. режим)');
+        console.log('Камера запущена');
       } catch (err) {
         console.error('Ошибка камеры:', err);
         alert('Не удалось получить доступ к камере.');
@@ -584,7 +748,6 @@
       setStatus('Остановлен', 'idle');
     }
 
-    // Привязка событий
     startBtn.addEventListener('click', onStart);
     stopBtn.addEventListener('click', onStop);
     
@@ -595,7 +758,7 @@
       });
     });
 
-    // ---------- Запуск приложения ----------
+    // ---------- Запуск ----------
     async function bootstrap() {
       await initPose();
       
@@ -604,11 +767,12 @@
       setStatus('Готов к старту', 'idle');
       updateUI();
       updateTimerDisplay();
+      updateGuideText();
       
       window.addEventListener('orientationchange', () => {
         setTimeout(() => {
           if (cameraInstance && isActive) {
-            console.log('Ориентация изменена, камера продолжает работу');
+            console.log('Ориентация изменена');
           }
         }, 300);
       });
