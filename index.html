@@ -97,34 +97,52 @@
       z-index: 10;
     }
 
-    .counter-panel {
+    /* Панель с таймером и счётчиком */
+    .stats-panel {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      margin-bottom: 18px;
+      width: 100%;
+    }
+
+    .counter-panel, .timer-panel {
       background: rgba(16, 19, 28, 0.85);
       backdrop-filter: blur(14px);
       -webkit-backdrop-filter: blur(14px);
       border-radius: 80px;
       padding: 10px 24px;
-      margin-bottom: 18px;
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 18px;
+      gap: 8px;
       border: 1px solid rgba(255, 215, 0, 0.2);
       box-shadow: 0 10px 20px rgba(0,0,0,0.5);
-      width: fit-content;
     }
 
-    .count-box {
+    .timer-panel {
+      border: 1px solid rgba(100, 180, 255, 0.25);
+      gap: 6px;
+    }
+
+    .count-box, .timer-box {
       display: flex;
       align-items: baseline;
       gap: 6px;
     }
 
-    .count-label {
+    .count-label, .timer-label {
       font-weight: 600;
-      font-size: 0.8rem;
+      font-size: 0.75rem;
       text-transform: uppercase;
       letter-spacing: 1.2px;
       color: #a0a9c4;
+    }
+
+    .timer-label {
+      color: #8ea4c7;
     }
 
     .count-number {
@@ -137,6 +155,20 @@
       line-height: 1;
       min-width: 56px;
       text-align: center;
+    }
+
+    .timer-number {
+      font-size: clamp(2rem, 7vw, 2.6rem);
+      font-weight: 700;
+      background: linear-gradient(to bottom, #c2e0ff, #4d8fda);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      line-height: 1;
+      min-width: 70px;
+      text-align: center;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: 1px;
     }
 
     .state-badge {
@@ -245,9 +277,12 @@
         font-size: 0.85rem;
         gap: 4px;
       }
-      .counter-panel {
-        padding: 8px 18px;
-        gap: 12px;
+      .stats-panel {
+        gap: 10px;
+      }
+      .counter-panel, .timer-panel {
+        padding: 8px 16px;
+        gap: 4px;
       }
     }
   </style>
@@ -262,11 +297,22 @@
     <canvas id="outputCanvas"></canvas>
   </div>
 
-  <div class="counter-panel">
-    <div class="count-box">
-      <span class="count-label">Повторения</span>
-      <span class="count-number" id="repCounter">0</span>
+  <!-- Панель с таймером и счётчиком -->
+  <div class="stats-panel">
+    <div class="counter-panel">
+      <div class="count-box">
+        <span class="count-label">Повторы</span>
+        <span class="count-number" id="repCounter">0</span>
+      </div>
     </div>
+    
+    <div class="timer-panel">
+      <div class="timer-box">
+        <span class="timer-label">⏱️</span>
+        <span class="timer-number" id="timerDisplay">00:00</span>
+      </div>
+    </div>
+    
     <div class="state-badge">
       <span class="state-dot" id="stateDot"></span>
       <span id="statusText">Ожидание</span>
@@ -298,6 +344,7 @@
     const canvasElement = document.getElementById('outputCanvas');
     const ctx = canvasElement.getContext('2d');
     const repCounterSpan = document.getElementById('repCounter');
+    const timerDisplay = document.getElementById('timerDisplay');
     const stateDot = document.getElementById('stateDot');
     const statusText = document.getElementById('statusText');
     const startBtn = document.getElementById('startBtn');
@@ -312,7 +359,7 @@
     // Параметры оптимизации для мобильных
     const MOBILE_WIDTH = 480;
     const MOBILE_HEIGHT = 360;
-    const FRAME_SKIP = 2; // Обрабатывать каждый 2-й кадр для снижения нагрузки
+    const FRAME_SKIP = 2;
     let frameCounter = 0;
     
     // Логика рывка
@@ -320,6 +367,45 @@
     const UP_THRESHOLD = -0.25;
     let armState = 'DOWN';
     let lastArmYRelative = null;
+
+    // ---------- Переменные для таймера ----------
+    let timerInterval = null;
+    let startTime = null;
+    let elapsedSeconds = 0;
+
+    // ---------- Функции таймера ----------
+    function formatTime(totalSeconds) {
+      const mins = Math.floor(totalSeconds / 60);
+      const secs = totalSeconds % 60;
+      return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+    }
+
+    function updateTimerDisplay() {
+      timerDisplay.textContent = formatTime(elapsedSeconds);
+    }
+
+    function startTimer() {
+      if (timerInterval) return;
+      
+      startTime = Date.now() - (elapsedSeconds * 1000);
+      timerInterval = setInterval(() => {
+        elapsedSeconds = Math.floor((Date.now() - startTime) / 1000);
+        updateTimerDisplay();
+      }, 200); // Обновляем каждые 200мс для плавности
+    }
+
+    function stopTimer() {
+      if (timerInterval) {
+        clearInterval(timerInterval);
+        timerInterval = null;
+      }
+    }
+
+    function resetTimer() {
+      stopTimer();
+      elapsedSeconds = 0;
+      updateTimerDisplay();
+    }
 
     // ---------- Функции обновления UI ----------
     function updateUI() {
@@ -340,10 +426,8 @@
 
     // ---------- Обработка результатов Pose с оптимизацией кадров ----------
     function onPoseResults(results) {
-      // Пропускаем кадры для снижения нагрузки на CPU
       frameCounter++;
       if (frameCounter % FRAME_SKIP !== 0) {
-        // Всё равно рисуем, но не анализируем движение каждый кадр
         drawPose(results);
         return;
       }
@@ -364,7 +448,6 @@
       }
 
       if (results.poseLandmarks) {
-        // Оптимизированная отрисовка: меньше деталей
         window.drawConnectors(ctx, results.poseLandmarks, window.POSE_CONNECTIONS, 
           { color: '#ffd966', lineWidth: 1.8 });
         window.drawLandmarks(ctx, results.poseLandmarks, 
@@ -415,7 +498,7 @@
       });
       
       pose.setOptions({
-        modelComplexity: 0,          // 0 - Lite (быстрее для мобильных)
+        modelComplexity: 0,
         smoothLandmarks: true,
         enableSegmentation: false,
         smoothSegmentation: false,
@@ -443,8 +526,8 @@
         },
         width: MOBILE_WIDTH,
         height: MOBILE_HEIGHT,
-        facingMode: 'user',          // Фронтальная камера
-        frameRate: 24               // Ограничение FPS
+        facingMode: 'user',
+        frameRate: 24
       });
 
       try {
@@ -476,6 +559,9 @@
         }
         
         resetCounterAndState();
+        resetTimer();
+        startTimer();
+        
         isActive = true;
         frameCounter = 0;
         
@@ -491,16 +577,17 @@
       if (!isActive) return;
       
       isActive = false;
+      stopTimer();
+      
       startBtn.disabled = false;
       stopBtn.disabled = true;
       setStatus('Остановлен', 'idle');
     }
 
-    // Привязка событий (используем pointer для лучшей мобильной реакции)
+    // Привязка событий
     startBtn.addEventListener('click', onStart);
     stopBtn.addEventListener('click', onStop);
     
-    // Предотвращаем двойной тап и зум на кнопках
     [startBtn, stopBtn].forEach(btn => {
       btn.addEventListener('touchstart', (e) => {
         e.preventDefault();
@@ -516,12 +603,11 @@
       startBtn.disabled = false;
       setStatus('Готов к старту', 'idle');
       updateUI();
+      updateTimerDisplay();
       
-      // Обработка изменения ориентации для перезапуска камеры (опционально)
       window.addEventListener('orientationchange', () => {
         setTimeout(() => {
           if (cameraInstance && isActive) {
-            // Кратковременная пауза для пересчета размеров
             console.log('Ориентация изменена, камера продолжает работу');
           }
         }, 300);
@@ -531,6 +617,7 @@
     bootstrap().catch(err => console.error('Ошибка инициализации:', err));
 
     window.addEventListener('beforeunload', () => {
+      stopTimer();
       if (cameraInstance) {
         cameraInstance.stop();
       }
