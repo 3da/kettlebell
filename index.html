@@ -1,940 +1,918 @@
 <!DOCTYPE html>
 <html lang="ru">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <title>Подсчёт рывков гири | MediaPipe Pose</title>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap">
-  <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-      -webkit-tap-highlight-color: transparent;
-      -webkit-user-select: none;
-      user-select: none;
-    }
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
+    />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta
+      name="apple-mobile-web-app-status-bar-style"
+      content="black-translucent"
+    />
+    <title>Подсчёт рывков гири | MediaPipe Pose</title>
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap"
+    />
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+        -webkit-tap-highlight-color: transparent;
+        -webkit-user-select: none;
+        user-select: none;
+      }
 
-    body {
-      font-family: 'Montserrat', sans-serif;
-      background: #121520;
-      min-height: 100vh;
-      min-height: -webkit-fill-available;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      padding: 12px;
-      margin: 0;
-      color: #f0f2f5;
-      touch-action: manipulation;
-    }
+      body {
+        font-family: "Montserrat", sans-serif;
+        background: #121520;
+        min-height: 100vh;
+        min-height: -webkit-fill-available;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding: 12px;
+        margin: 0;
+        color: #f0f2f5;
+        touch-action: manipulation;
+      }
 
-    .container {
-      width: 100%;
-      max-width: 480px;
-      background: rgba(22, 26, 36, 0.95);
-      backdrop-filter: blur(16px);
-      -webkit-backdrop-filter: blur(16px);
-      border-radius: 32px;
-      padding: 16px 14px 20px;
-      box-shadow: 0 25px 45px rgba(0, 0, 0, 0.7), inset 0 1px 1px rgba(255, 255, 255, 0.06);
-      border: 1px solid rgba(255, 255, 255, 0.06);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      max-height: 100vh;
-      overflow-y: auto;
-    }
+      .container {
+        width: 100%;
+        max-width: 480px;
+        background: rgba(22, 26, 36, 0.95);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        border-radius: 32px;
+        padding: 16px 14px 20px;
+        box-shadow: 0 25px 45px rgba(0, 0, 0, 0.7),
+          inset 0 1px 1px rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(255, 255, 255, 0.06);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        max-height: 100vh;
+        overflow-y: auto;
+      }
 
-    h1 {
-      font-size: clamp(1.5rem, 5vw, 1.9rem);
-      font-weight: 700;
-      letter-spacing: -0.3px;
-      background: linear-gradient(to right, #f7971e, #ffd200);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-      margin-bottom: 2px;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
+      h1 {
+        font-size: clamp(1.5rem, 5vw, 1.9rem);
+        font-weight: 700;
+        letter-spacing: -0.3px;
+        background: linear-gradient(to right, #f7971e, #ffd200);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        margin-bottom: 2px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
 
-    .subtitle {
-      font-weight: 400;
-      color: #9aa0b5;
-      margin-bottom: 8px;
-      font-size: 0.75rem;
-      background: rgba(255, 255, 255, 0.04);
-      padding: 3px 14px;
-      border-radius: 24px;
-    }
+      .subtitle {
+        font-weight: 400;
+        color: #9aa0b5;
+        margin-bottom: 8px;
+        font-size: 0.75rem;
+        background: rgba(255, 255, 255, 0.04);
+        padding: 3px 14px;
+        border-radius: 24px;
+      }
 
-    /* Переключатель режимов упражнений */
-    .mode-selector {
-      display: flex;
-      gap: 4px;
-      margin-bottom: 8px;
-      background: rgba(16, 19, 28, 0.7);
-      border-radius: 40px;
-      padding: 3px;
-      width: 100%;
-      max-width: 380px;
-    }
+      .mode-selector {
+        display: flex;
+        gap: 4px;
+        margin-bottom: 8px;
+        background: rgba(16, 19, 28, 0.7);
+        border-radius: 40px;
+        padding: 3px;
+        width: 100%;
+        max-width: 380px;
+      }
 
-    .mode-btn {
-      flex: 1;
-      padding: 8px 6px;
-      border-radius: 36px;
-      border: none;
-      background: transparent;
-      color: #8890aa;
-      font-weight: 600;
-      font-size: 0.7rem;
-      cursor: pointer;
-      transition: all 0.2s ease;
-      white-space: nowrap;
-      text-transform: uppercase;
-      letter-spacing: 0.3px;
-      touch-action: manipulation;
-    }
+      .mode-btn {
+        flex: 1;
+        padding: 8px 6px;
+        border-radius: 36px;
+        border: none;
+        background: transparent;
+        color: #8890aa;
+        font-weight: 600;
+        font-size: 0.7rem;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        white-space: nowrap;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+        touch-action: manipulation;
+      }
 
-    .mode-btn.active {
-      background: linear-gradient(135deg, #f5a623, #c97a0a);
-      color: #0a0c12;
-      box-shadow: 0 4px 12px rgba(245, 166, 35, 0.35);
-      font-weight: 700;
-    }
+      .mode-btn.active {
+        background: linear-gradient(135deg, #f5a623, #c97a0a);
+        color: #0a0c12;
+        box-shadow: 0 4px 12px rgba(245, 166, 35, 0.35);
+        font-weight: 700;
+      }
 
-    /* Переключатель рук */
-    .hand-selector {
-      display: flex;
-      gap: 4px;
-      margin-bottom: 8px;
-      background: rgba(16, 19, 28, 0.7);
-      border-radius: 40px;
-      padding: 3px;
-      width: 100%;
-      max-width: 380px;
-    }
+      .hand-selector {
+        display: flex;
+        gap: 4px;
+        margin-bottom: 8px;
+        background: rgba(16, 19, 28, 0.7);
+        border-radius: 40px;
+        padding: 3px;
+        width: 100%;
+        max-width: 380px;
+      }
 
-    .hand-btn {
-      flex: 1;
-      padding: 8px 6px;
-      border-radius: 36px;
-      border: none;
-      background: transparent;
-      color: #8890aa;
-      font-weight: 600;
-      font-size: 0.7rem;
-      cursor: pointer;
-      transition: all 0.2s ease;
-      white-space: nowrap;
-      text-transform: uppercase;
-      letter-spacing: 0.3px;
-      touch-action: manipulation;
-    }
+      .hand-btn {
+        flex: 1;
+        padding: 8px 6px;
+        border-radius: 36px;
+        border: none;
+        background: transparent;
+        color: #8890aa;
+        font-weight: 600;
+        font-size: 0.7rem;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        white-space: nowrap;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+        touch-action: manipulation;
+      }
 
-    .hand-btn.active {
-      background: linear-gradient(135deg, #4d8fda, #2a5c9e);
-      color: white;
-      box-shadow: 0 4px 12px rgba(77, 143, 218, 0.35);
-      font-weight: 700;
-    }
+      .hand-btn.active {
+        background: linear-gradient(135deg, #4d8fda, #2a5c9e);
+        color: white;
+        box-shadow: 0 4px 12px rgba(77, 143, 218, 0.35);
+        font-weight: 700;
+      }
 
-    /* Настройки угла */
-    .angle-settings {
-      background: rgba(16, 19, 28, 0.6);
-      border-radius: 16px;
-      padding: 10px 14px;
-      margin-bottom: 10px;
-      width: 100%;
-      max-width: 380px;
-      border: 1px solid rgba(255, 255, 255, 0.06);
-    }
+      .angle-settings {
+        background: rgba(16, 19, 28, 0.6);
+        border-radius: 16px;
+        padding: 10px 14px;
+        margin-bottom: 10px;
+        width: 100%;
+        max-width: 380px;
+        border: 1px solid rgba(255, 255, 255, 0.06);
+      }
 
-    .angle-settings-title {
-      font-size: 0.65rem;
-      font-weight: 600;
-      color: #8890aa;
-      text-transform: uppercase;
-      letter-spacing: 0.8px;
-      margin-bottom: 8px;
-      display: flex;
-      align-items: center;
-      gap: 4px;
-    }
+      .angle-settings-title {
+        font-size: 0.65rem;
+        font-weight: 600;
+        color: #8890aa;
+        text-transform: uppercase;
+        letter-spacing: 0.8px;
+        margin-bottom: 8px;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+      }
 
-    .angle-slider-group {
-      width: 100%;
-    }
+      .angle-slider-group {
+        width: 100%;
+      }
 
-    .angle-slider-label {
-      display: flex;
-      justify-content: space-between;
-      font-size: 0.6rem;
-      color: #b0b8cc;
-      margin-bottom: 2px;
-    }
+      .angle-slider-label {
+        display: flex;
+        justify-content: space-between;
+        font-size: 0.6rem;
+        color: #b0b8cc;
+        margin-bottom: 2px;
+      }
 
-    .angle-slider-label span:last-child {
-      font-weight: 700;
-      color: #ffd200;
-    }
+      .angle-slider-label span:last-child {
+        font-weight: 700;
+        color: #ffd200;
+      }
 
-    input[type="range"] {
-      width: 100%;
-      height: 4px;
-      -webkit-appearance: none;
-      background: #2d3342;
-      border-radius: 2px;
-      outline: none;
-      margin: 6px 0;
-    }
+      input[type="range"] {
+        width: 100%;
+        height: 4px;
+        -webkit-appearance: none;
+        background: #2d3342;
+        border-radius: 2px;
+        outline: none;
+        margin: 6px 0;
+      }
 
-    input[type="range"]::-webkit-slider-thumb {
-      -webkit-appearance: none;
-      width: 22px;
-      height: 22px;
-      background: linear-gradient(135deg, #f5a623, #c97a0a);
-      border-radius: 50%;
-      cursor: pointer;
-      border: 2px solid #1a1e2b;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.5);
-    }
+      input[type="range"]::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        width: 22px;
+        height: 22px;
+        background: linear-gradient(135deg, #f5a623, #c97a0a);
+        border-radius: 50%;
+        cursor: pointer;
+        border: 2px solid #1a1e2b;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+      }
 
-    .video-wrapper {
-      position: relative;
-      width: 100%;
-      max-width: 100%;
-      border-radius: 24px;
-      overflow: hidden;
-      box-shadow: 0 16px 28px rgba(0,0,0,0.7);
-      margin-bottom: 12px;
-      background: #05070c;
-      aspect-ratio: 4/3;
-    }
+      .video-wrapper {
+        position: relative;
+        width: 100%;
+        max-width: 100%;
+        border-radius: 24px;
+        overflow: hidden;
+        box-shadow: 0 16px 28px rgba(0, 0, 0, 0.7);
+        margin-bottom: 12px;
+        background: #05070c;
+        aspect-ratio: 4/3;
+      }
 
-    video, canvas {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      display: block;
-      transform: scaleX(-1);
-    }
+      video,
+      canvas {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+        transform: scaleX(-1);
+      }
 
-    canvas {
-      z-index: 10;
-    }
+      canvas {
+        z-index: 10;
+      }
 
-    /* Панель с таймером и счётчиком */
-    .stats-panel {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      justify-content: center;
-      gap: 10px;
-      margin-bottom: 12px;
-      width: 100%;
-    }
+      .stats-panel {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        margin-bottom: 12px;
+        width: 100%;
+      }
 
-    .counter-panel, .timer-panel {
-      background: rgba(16, 19, 28, 0.85);
-      backdrop-filter: blur(14px);
-      -webkit-backdrop-filter: blur(14px);
-      border-radius: 60px;
-      padding: 8px 16px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 6px;
-      border: 1px solid rgba(255, 215, 0, 0.2);
-      box-shadow: 0 8px 16px rgba(0,0,0,0.5);
-    }
+      .counter-panel,
+      .timer-panel {
+        background: rgba(16, 19, 28, 0.85);
+        backdrop-filter: blur(14px);
+        -webkit-backdrop-filter: blur(14px);
+        border-radius: 60px;
+        padding: 8px 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        border: 1px solid rgba(255, 215, 0, 0.2);
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.5);
+      }
 
-    .timer-panel {
-      border: 1px solid rgba(100, 180, 255, 0.25);
-    }
+      .timer-panel {
+        border: 1px solid rgba(100, 180, 255, 0.25);
+      }
 
-    .count-box, .timer-box {
-      display: flex;
-      align-items: baseline;
-      gap: 4px;
-    }
+      .count-box,
+      .timer-box {
+        display: flex;
+        align-items: baseline;
+        gap: 4px;
+      }
 
-    .count-label, .timer-label {
-      font-weight: 600;
-      font-size: 0.65rem;
-      text-transform: uppercase;
-      letter-spacing: 0.8px;
-      color: #a0a9c4;
-    }
+      .count-label,
+      .timer-label {
+        font-weight: 600;
+        font-size: 0.65rem;
+        text-transform: uppercase;
+        letter-spacing: 0.8px;
+        color: #a0a9c4;
+      }
 
-    .timer-label {
-      color: #8ea4c7;
-    }
+      .timer-label {
+        color: #8ea4c7;
+      }
 
-    .count-number {
-      font-size: clamp(2rem, 7vw, 2.5rem);
-      font-weight: 700;
-      background: linear-gradient(to bottom, #ffe79e, #e6961c);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-      line-height: 1;
-      min-width: 40px;
-      text-align: center;
-    }
+      .count-number {
+        font-size: clamp(2rem, 7vw, 2.5rem);
+        font-weight: 700;
+        background: linear-gradient(to bottom, #ffe79e, #e6961c);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        line-height: 1;
+        min-width: 40px;
+        text-align: center;
+      }
 
-    .timer-number {
-      font-size: clamp(1.5rem, 5vw, 1.9rem);
-      font-weight: 700;
-      background: linear-gradient(to bottom, #c2e0ff, #4d8fda);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-      line-height: 1;
-      min-width: 50px;
-      text-align: center;
-      font-variant-numeric: tabular-nums;
-      letter-spacing: 0.8px;
-    }
+      .timer-number {
+        font-size: clamp(1.5rem, 5vw, 1.9rem);
+        font-weight: 700;
+        background: linear-gradient(to bottom, #c2e0ff, #4d8fda);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        line-height: 1;
+        min-width: 50px;
+        text-align: center;
+        font-variant-numeric: tabular-nums;
+        letter-spacing: 0.8px;
+      }
 
-    .state-badge {
-      background: #262d3b;
-      padding: 6px 12px;
-      border-radius: 30px;
-      font-weight: 600;
-      font-size: 0.65rem;
-      color: #cfd7ea;
-      display: flex;
-      align-items: center;
-      gap: 4px;
-      white-space: nowrap;
-    }
+      .state-badge {
+        background: #262d3b;
+        padding: 6px 12px;
+        border-radius: 30px;
+        font-weight: 600;
+        font-size: 0.65rem;
+        color: #cfd7ea;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        white-space: nowrap;
+      }
 
-    .hand-indicators {
-      display: flex;
-      gap: 8px;
-    }
+      .hand-indicators {
+        display: flex;
+        gap: 8px;
+      }
 
-    .hand-indicator {
-      display: flex;
-      align-items: center;
-      gap: 3px;
-      font-size: 0.6rem;
-      color: #8890aa;
-    }
+      .hand-indicator {
+        display: flex;
+        align-items: center;
+        gap: 3px;
+        font-size: 0.6rem;
+        color: #8890aa;
+      }
 
-    .hand-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: #555;
-    }
-    .hand-dot.right-up { background: #4cff8c; box-shadow: 0 0 8px #1ce65f; }
-    .hand-dot.left-up { background: #4cff8c; box-shadow: 0 0 8px #1ce65f; }
-    .hand-dot.down { background: #ffb347; }
+      .hand-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: #555;
+      }
+      .hand-dot.right-up {
+        background: #4cff8c;
+        box-shadow: 0 0 8px #1ce65f;
+      }
+      .hand-dot.left-up {
+        background: #4cff8c;
+        box-shadow: 0 0 8px #1ce65f;
+      }
+      .hand-dot.down {
+        background: #ffb347;
+      }
+      .hand-dot.angle {
+        background: #ff4444;
+        box-shadow: 0 0 8px #ff0000;
+      }
 
-    .state-dot {
-      width: 10px;
-      height: 10px;
-      border-radius: 50%;
-      background: #aaa;
-      display: inline-block;
-    }
-    .state-dot.active {
-      background: #4cff8c;
-      box-shadow: 0 0 14px #1ce65f;
-    }
-    .state-dot.idle {
-      background: #ffb347;
-    }
+      .state-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: #aaa;
+        display: inline-block;
+      }
+      .state-dot.active {
+        background: #4cff8c;
+        box-shadow: 0 0 14px #1ce65f;
+      }
+      .state-dot.idle {
+        background: #ffb347;
+      }
 
-    .controls {
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-      justify-content: center;
-      margin: 2px 0 8px;
-      width: 100%;
-    }
+      .controls {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        justify-content: center;
+        margin: 2px 0 8px;
+        width: 100%;
+      }
 
-    .btn {
-      background: #2f3547;
-      border: none;
-      padding: 11px 16px;
-      border-radius: 40px;
-      font-weight: 700;
-      font-size: 0.85rem;
-      letter-spacing: 0.4px;
-      color: #eef3ff;
-      cursor: pointer;
-      background: linear-gradient(135deg, #3b4254, #242a38);
-      box-shadow: 0 6px 14px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.08);
-      transition: all 0.15s ease;
-      display: flex;
-      align-items: center;
-      gap: 4px;
-      border: 1px solid rgba(255,255,255,0.05);
-      text-transform: uppercase;
-      flex: 1;
-      justify-content: center;
-      min-width: 90px;
-      touch-action: manipulation;
-    }
+      .btn {
+        background: #2f3547;
+        border: none;
+        padding: 11px 16px;
+        border-radius: 40px;
+        font-weight: 700;
+        font-size: 0.85rem;
+        letter-spacing: 0.4px;
+        color: #eef3ff;
+        cursor: pointer;
+        background: linear-gradient(135deg, #3b4254, #242a38);
+        box-shadow: 0 6px 14px rgba(0, 0, 0, 0.45),
+          inset 0 1px 0 rgba(255, 255, 255, 0.08);
+        transition: all 0.15s ease;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        text-transform: uppercase;
+        flex: 1;
+        justify-content: center;
+        min-width: 90px;
+        touch-action: manipulation;
+      }
 
-    .btn:active {
-      transform: scale(0.96);
-    }
+      .btn:active {
+        transform: scale(0.96);
+      }
 
-    .start-btn {
-      background: linear-gradient(135deg, #f5a623, #c97a0a);
-      color: #0a0c12;
-      border: 1px solid rgba(255,200,0,0.5);
-    }
+      .start-btn {
+        background: linear-gradient(135deg, #f5a623, #c97a0a);
+        color: #0a0c12;
+        border: 1px solid rgba(255, 200, 0, 0.5);
+      }
 
-    .stop-btn {
-      background: linear-gradient(135deg, #e63946, #a61b2a);
-      color: white;
-      border: 1px solid rgba(255,100,100,0.35);
-    }
+      .stop-btn {
+        background: linear-gradient(135deg, #e63946, #a61b2a);
+        color: white;
+        border: 1px solid rgba(255, 100, 100, 0.35);
+      }
 
-    .btn:disabled {
-      opacity: 0.4;
-      pointer-events: none;
-      filter: grayscale(0.5);
-    }
+      .btn:disabled {
+        opacity: 0.4;
+        pointer-events: none;
+        filter: grayscale(0.5);
+      }
 
-    .guide-text {
-      font-size: 0.6rem;
-      color: #7e869c;
-      margin-top: 2px;
-      display: flex;
-      align-items: center;
-      gap: 3px;
-      text-align: center;
-    }
+      .guide-text {
+        font-size: 0.6rem;
+        color: #7e869c;
+        margin-top: 2px;
+        display: flex;
+        align-items: center;
+        gap: 3px;
+        text-align: center;
+      }
 
-    @media (max-width: 400px) {
-      .container { padding: 10px 8px 16px; }
-      .btn { padding: 10px 12px; font-size: 0.78rem; }
-    }
-  </style>
-</head>
-<body>
-<div class="container">
-  <h1>🏋️ Гиревой спорт</h1>
-  <div class="subtitle">MediaPipe Pose · отслеживание</div>
-
-  <!-- Переключатель режимов упражнений -->
-  <div class="mode-selector" id="modeSelector">
-    <button class="mode-btn active" data-mode="snatch">Рывок</button>
-    <button class="mode-btn" data-mode="jerk">Толчок</button>
-    <button class="mode-btn" data-mode="fullCycle">Полный цикл</button>
-  </div>
-
-  <!-- Переключатель рук -->
-  <div class="hand-selector" id="handSelector">
-    <button class="hand-btn active" data-hand="single">Одна рука (любая)</button>
-    <button class="hand-btn" data-hand="both">Две руки вместе</button>
-  </div>
-
-  <!-- Настройка минимального угла в локте -->
-  <div class="angle-settings">
-    <div class="angle-settings-title">🎯 Минимальный угол в локте</div>
-    <div class="angle-slider-group">
-      <div class="angle-slider-label">
-        <span>Угол для засчитывания</span>
-        <span id="minAngleValue">150°</span>
+      @media (max-width: 400px) {
+        .container {
+          padding: 10px 8px 16px;
+        }
+        .btn {
+          padding: 10px 12px;
+          font-size: 0.78rem;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>🏋️ Гиревой спорт</h1>
+      <div class="subtitle">MediaPipe Pose · отслеживание</div>
+      <div class="hand-selector" id="handSelector">
+        <button class="hand-btn active" data-hand="single">
+          Одна рука (любая)
+        </button>
+        <button class="hand-btn" data-hand="both">Две руки вместе</button>
       </div>
-      <input type="range" id="minAngleSlider" min="90" max="180" value="150" step="1">
-    </div>
-  </div>
 
-  <div class="video-wrapper">
-    <video id="inputVideo" autoplay playsinline muted></video>
-    <canvas id="outputCanvas"></canvas>
-  </div>
-
-  <div class="stats-panel">
-    <div class="counter-panel">
-      <div class="count-box">
-        <span class="count-label">Повторы</span>
-        <span class="count-number" id="repCounter">0</span>
-      </div>
-    </div>
-    
-    <div class="timer-panel">
-      <div class="timer-box">
-        <span class="timer-label">⏱️</span>
-        <span class="timer-number" id="timerDisplay">00:00</span>
-      </div>
-    </div>
-    
-    <div class="state-badge">
-      <div class="hand-indicators">
-        <div class="hand-indicator">
-          <span>П</span><span class="hand-dot down" id="rightHandDot"></span>
-        </div>
-        <div class="hand-indicator">
-          <span>Л</span><span class="hand-dot down" id="leftHandDot"></span>
+      <div class="angle-settings">
+        <div class="angle-settings-title">🎯 Минимальный угол в локте</div>
+        <div class="angle-slider-group">
+          <div class="angle-slider-label">
+            <span>Угол для засчитывания</span>
+            <span id="minAngleValue">150°</span>
+          </div>
+          <input
+            type="range"
+            id="minAngleSlider"
+            min="90"
+            max="180"
+            value="150"
+            step="1"
+          />
         </div>
       </div>
-      <span class="state-dot" id="stateDot"></span>
-      <span id="statusText">Ожидание</span>
+
+      <div class="video-wrapper">
+        <video id="inputVideo" autoplay playsinline muted></video>
+        <canvas id="outputCanvas"></canvas>
+      </div>
+
+      <div class="stats-panel">
+        <div class="counter-panel">
+          <div class="count-box">
+            <span class="count-label">Повторы</span>
+            <span class="count-number" id="repCounter">0</span>
+          </div>
+        </div>
+
+        <div class="timer-panel">
+          <div class="timer-box">
+            <span class="timer-label">⏱️</span>
+            <span class="timer-number" id="timerDisplay">00:00</span>
+          </div>
+        </div>
+
+        <div class="state-badge">
+          <div class="hand-indicators">
+            <div class="hand-indicator">
+              <span>П</span
+              ><span class="hand-dot down" id="rightHandDot"></span>
+            </div>
+            <div class="hand-indicator">
+              <span>Л</span><span class="hand-dot down" id="leftHandDot"></span>
+            </div>
+          </div>
+          <span class="state-dot" id="stateDot"></span>
+          <span id="statusText">Ожидание</span>
+        </div>
+      </div>
+
+      <div class="controls">
+        <button class="btn start-btn" id="startBtn">
+          <span>▶</span> Старт
+        </button>
+        <button class="btn stop-btn" id="stopBtn"><span>⏹️</span> Стоп</button>
+      </div>
     </div>
-  </div>
 
-  <div class="controls">
-    <button class="btn start-btn" id="startBtn">
-      <span>▶</span> Старт
-    </button>
-    <button class="btn stop-btn" id="stopBtn">
-      <span>⏹️</span> Стоп
-    </button>
-  </div>
-  <div class="guide-text" id="guideText">
-    <span>💡 Рывок: рука снизу вверх над плечом</span>
-  </div>
-</div>
+    <script
+      src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"
+      crossorigin="anonymous"
+    ></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js"></script>
+    <script src="core.js"></script>
+    <script>
+      (function () {
+        // ---------- DOM элементы ----------
+        const videoElement = document.getElementById("inputVideo");
+        const canvasElement = document.getElementById("outputCanvas");
+        const ctx = canvasElement.getContext("2d");
+        const repCounterSpan = document.getElementById("repCounter");
+        const timerDisplay = document.getElementById("timerDisplay");
+        const stateDot = document.getElementById("stateDot");
+        const statusText = document.getElementById("statusText");
+        const startBtn = document.getElementById("startBtn");
+        const stopBtn = document.getElementById("stopBtn");
+        const handButtons = document.querySelectorAll(".hand-btn");
+        const minAngleSlider = document.getElementById("minAngleSlider");
+        const minAngleValue = document.getElementById("minAngleValue");
+        const rightHandDot = document.getElementById("rightHandDot");
+        const leftHandDot = document.getElementById("leftHandDot");
 
-<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
-<script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js"></script>
+        // ---------- Глобальные переменные ----------
+        let pose;
+        let cameraInstance = null;
+        let isActive = false;
+        let repetitions = 0;
 
-<script>
-  (function() {
-    // ---------- DOM элементы ----------
-    const videoElement = document.getElementById('inputVideo');
-    const canvasElement = document.getElementById('outputCanvas');
-    const ctx = canvasElement.getContext('2d');
-    const repCounterSpan = document.getElementById('repCounter');
-    const timerDisplay = document.getElementById('timerDisplay');
-    const stateDot = document.getElementById('stateDot');
-    const statusText = document.getElementById('statusText');
-    const startBtn = document.getElementById('startBtn');
-    const stopBtn = document.getElementById('stopBtn');
-    const guideText = document.getElementById('guideText');
-    const modeButtons = document.querySelectorAll('.mode-btn');
-    const handButtons = document.querySelectorAll('.hand-btn');
-    const minAngleSlider = document.getElementById('minAngleSlider');
-    const minAngleValue = document.getElementById('minAngleValue');
-    const rightHandDot = document.getElementById('rightHandDot');
-    const leftHandDot = document.getElementById('leftHandDot');
+        let handMode = "single"; // 'single' или 'both'
+        let minElbowAngle = 150;
 
-    // ---------- Глобальные переменные ----------
-    let pose;
-    let cameraInstance = null;
-    let isActive = false;
-    let repetitions = 0;
-    
-    let currentMode = 'snatch';
-    let handMode = 'single'; // 'single' или 'both'
-    let minElbowAngle = 150;
-    
-    const MOBILE_WIDTH = 480;
-    const MOBILE_HEIGHT = 360;
-    const FRAME_SKIP = 2;
-    let frameCounter = 0;
-    
-    // Пороги
-    const SNATCH_DOWN_THRESHOLD = 0.15;
-    const SNATCH_UP_THRESHOLD = -0.25;
-    const JERK_DOWN_THRESHOLD = 0.05;
-    const JERK_UP_THRESHOLD = -0.25;
-    
-    // Состояния для обеих рук
-    let rightArmState = 'DOWN';
-    let leftArmState = 'DOWN';
+        const MOBILE_WIDTH = 480;
+        const MOBILE_HEIGHT = 360;
+        const FRAME_SKIP = 2;
+        let frameCounter = 0;
 
-    // ---------- Таймер ----------
-    let timerInterval = null;
-    let startTime = null;
-    let elapsedSeconds = 0;
+        // Состояния для обеих рук
+        let rightArmState = "DOWN";
+        let leftArmState = "DOWN";
 
-    function formatTime(totalSeconds) {
-      const mins = Math.floor(totalSeconds / 60);
-      const secs = totalSeconds % 60;
-      return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
-    }
+        // ---------- Таймер ----------
+        let timerInterval = null;
+        let startTime = null;
+        let elapsedSeconds = 0;
 
-    function updateTimerDisplay() {
-      timerDisplay.textContent = formatTime(elapsedSeconds);
-    }
-
-    function startTimer() {
-      if (timerInterval) return;
-      startTime = Date.now() - (elapsedSeconds * 1000);
-      timerInterval = setInterval(() => {
-        elapsedSeconds = Math.floor((Date.now() - startTime) / 1000);
-        updateTimerDisplay();
-      }, 200);
-    }
-
-    function stopTimer() {
-      if (timerInterval) {
-        clearInterval(timerInterval);
-        timerInterval = null;
-      }
-    }
-
-    function resetTimer() {
-      stopTimer();
-      elapsedSeconds = 0;
-      updateTimerDisplay();
-    }
-
-    // ---------- UI функции ----------
-    function updateUI() {
-      repCounterSpan.textContent = repetitions;
-    }
-
-    function setStatus(state, dotClass) {
-      stateDot.className = 'state-dot ' + dotClass;
-      statusText.textContent = state;
-    }
-
-    function updateHandIndicators() {
-      rightHandDot.className = 'hand-dot ' + (rightArmState === 'UP' ? 'right-up' : 'down');
-      leftHandDot.className = 'hand-dot ' + (leftArmState === 'UP' ? 'left-up' : 'down');
-    }
-
-    function resetAll() {
-      repetitions = 0;
-      rightArmState = 'DOWN';
-      leftArmState = 'DOWN';
-      updateUI();
-      updateHandIndicators();
-    }
-
-    function updateGuideText() {
-      const handText = handMode === 'single' ? 'любая рука' : 'обе руки вместе';
-      switch(currentMode) {
-        case 'snatch':
-          guideText.innerHTML = `<span>💡 Рывок (${handText}): снизу вверх над плечом</span>`;
-          break;
-        case 'jerk':
-          guideText.innerHTML = `<span>💡 Толчок (${handText}): от груди вверх на вытянутые руки</span>`;
-          break;
-        case 'fullCycle':
-          guideText.innerHTML = `<span>💡 Полный цикл (${handText}): ниже пояса → над плечом</span>`;
-          break;
-      }
-    }
-
-    // ---------- Слайдер угла ----------
-    minAngleSlider.addEventListener('input', () => {
-      minElbowAngle = parseInt(minAngleSlider.value);
-      minAngleValue.textContent = minElbowAngle + '°';
-    });
-
-    // ---------- Переключение режимов ----------
-    modeButtons.forEach(btn => {
-      btn.addEventListener('click', () => {
-        if (isActive) {
-          if (!confirm('Смена режима сбросит счётчик. Продолжить?')) return;
+        function formatTime(totalSeconds) {
+          const mins = Math.floor(totalSeconds / 60);
+          const secs = totalSeconds % 60;
+          return `${String(mins).padStart(2, "0")}:${String(secs).padStart(
+            2,
+            "0"
+          )}`;
         }
-        modeButtons.forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        currentMode = btn.dataset.mode;
-        resetAll();
-        updateGuideText();
-        if (isActive) setStatus('Режим сменён', 'idle');
-      });
-    });
 
-    handButtons.forEach(btn => {
-      btn.addEventListener('click', () => {
-        if (isActive) {
-          if (!confirm('Смена режима рук сбросит счётчик. Продолжить?')) return;
+        function updateTimerDisplay() {
+          timerDisplay.textContent = formatTime(elapsedSeconds);
         }
-        handButtons.forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        handMode = btn.dataset.hand;
-        resetAll();
-        updateGuideText();
-        if (isActive) setStatus('Режим сменён', 'idle');
-      });
-    });
 
-    // ---------- Обработка Pose ----------
-    function onPoseResults(results) {
-      frameCounter++;
-      if (frameCounter % FRAME_SKIP !== 0) {
-        drawPose(results);
-        return;
-      }
-      
-      drawPose(results);
-      
-      if (results.poseLandmarks && isActive) {
-        processPoseForReps(results.poseLandmarks);
-      }
-    }
+        function startTimer() {
+          if (timerInterval) return;
+          startTime = Date.now() - elapsedSeconds * 1000;
+          timerInterval = setInterval(() => {
+            elapsedSeconds = Math.floor((Date.now() - startTime) / 1000);
+            updateTimerDisplay();
+          }, 200);
+        }
 
-    function drawPose(results) {
-      ctx.clearRect(0, 0, canvasElement.width, canvasElement.height);
-      
-      if (videoElement.videoWidth && videoElement.videoHeight) {
-        canvasElement.width = videoElement.videoWidth;
-        canvasElement.height = videoElement.videoHeight;
-      }
-
-      if (results.poseLandmarks) {
-        window.drawConnectors(ctx, results.poseLandmarks, window.POSE_CONNECTIONS, 
-          { color: '#ffd966', lineWidth: 1.5 });
-        window.drawLandmarks(ctx, results.poseLandmarks, 
-          { color: '#ff9f2f', lineWidth: 1, radius: 2 });
-      }
-    }
-
-    function processPoseForReps(landmarks) {
-      if (!landmarks || landmarks.length < 17) return;
-      
-      // Индексы: правое плечо 12, правый локоть 14, правое запястье 16
-      // левое плечо 11, левый локоть 13, левое запястье 15
-      const rightShoulder = landmarks[12];
-      const rightElbow = landmarks[14];
-      const rightWrist = landmarks[16];
-      const leftShoulder = landmarks[11];
-      const leftElbow = landmarks[13];
-      const leftWrist = landmarks[15];
-      
-      // Проверка видимости
-      const rightVisible = rightShoulder.visibility > 0.5 && rightWrist.visibility > 0.5 && rightElbow.visibility > 0.5;
-      const leftVisible = leftShoulder.visibility > 0.5 && leftWrist.visibility > 0.5 && leftElbow.visibility > 0.5;
-      
-      let downThreshold, upThreshold;
-      
-      switch(currentMode) {
-        case 'snatch':
-          downThreshold = SNATCH_DOWN_THRESHOLD;
-          upThreshold = SNATCH_UP_THRESHOLD;
-          break;
-        case 'jerk':
-          downThreshold = JERK_DOWN_THRESHOLD;
-          upThreshold = JERK_UP_THRESHOLD;
-          break;
-        case 'fullCycle':
-          downThreshold = SNATCH_DOWN_THRESHOLD;
-          upThreshold = SNATCH_UP_THRESHOLD;
-          break;
-      }
-
-      let repCounted = false;
-
-      if (handMode === 'single') {
-        // Режим одной руки: засчитываем любое поднятие
-        // Правая рука
-        if (rightVisible) {
-          const rightRelY = rightWrist.y - rightShoulder.y;
-          const rightAngle = calculateElbowAngle(rightShoulder, rightElbow, rightWrist);
-          const angleValid = rightAngle >= minElbowAngle;
-          
-          if (rightArmState === 'DOWN' && rightRelY < upThreshold && (currentMode !== 'jerk' || angleValid)) {
-            repetitions++;
-            rightArmState = 'UP';
-            repCounted = true;
-          } else if (rightArmState === 'UP' && rightRelY > downThreshold) {
-            rightArmState = 'DOWN';
+        function stopTimer() {
+          if (timerInterval) {
+            clearInterval(timerInterval);
+            timerInterval = null;
           }
         }
-        
-        // Левая рука
-        if (leftVisible && !repCounted) {
-          const leftRelY = leftWrist.y - leftShoulder.y;
-          const leftAngle = calculateElbowAngle(leftShoulder, leftElbow, leftWrist);
-          const angleValid = leftAngle >= minElbowAngle;
-          
-          if (leftArmState === 'DOWN' && leftRelY < upThreshold && (currentMode !== 'jerk' || angleValid)) {
-            repetitions++;
-            leftArmState = 'UP';
-            repCounted = true;
-          } else if (leftArmState === 'UP' && leftRelY > downThreshold) {
-            leftArmState = 'DOWN';
+
+        function resetTimer() {
+          stopTimer();
+          elapsedSeconds = 0;
+          updateTimerDisplay();
+        }
+
+        // ---------- UI функции ----------
+        function updateUI() {
+          repCounterSpan.textContent = repetitions;
+        }
+
+        function setStatus(state, dotClass) {
+          stateDot.className = "state-dot " + dotClass;
+          statusText.textContent = state;
+        }
+
+        function updateHandIndicators() {
+          // Правая рука
+          switch (rightArmState) {
+            case "UP":
+              rightHandDot.className = "hand-dot right-up";
+              break;
+            case "DOWN":
+              rightHandDot.className = "hand-dot down";
+              break;
+            case "ANGLE":
+              rightHandDot.className = "hand-dot angle";
+              break;
+          }
+          // Левая рука
+          switch (leftArmState) {
+            case "UP":
+              leftHandDot.className = "hand-dot left-up";
+              break;
+            case "DOWN":
+              leftHandDot.className = "hand-dot down";
+              break;
+            case "ANGLE":
+              leftHandDot.className = "hand-dot angle";
+              break;
           }
         }
-        
-      } else {
-        // Режим двух рук: нужно чтобы обе руки были внизу, потом обе вверху
-        const rightRelY = rightVisible ? rightWrist.y - rightShoulder.y : null;
-        const leftRelY = leftVisible ? leftWrist.y - leftShoulder.y : null;
-        
-        const rightAngle = rightVisible ? calculateElbowAngle(rightShoulder, rightElbow, rightWrist) : 180;
-        const leftAngle = leftVisible ? calculateElbowAngle(leftShoulder, leftElbow, leftWrist) : 180;
-        
-        const rightAngleValid = !rightVisible || rightAngle >= minElbowAngle;
-        const leftAngleValid = !leftVisible || leftAngle >= minElbowAngle;
-        
-        // Обе руки внизу?
-        const bothDown = (rightRelY === null || rightRelY > downThreshold) && 
-                         (leftRelY === null || leftRelY > downThreshold);
-        // Обе руки вверху?
-        const bothUp = (rightRelY !== null && rightRelY < upThreshold) && 
-                       (leftRelY !== null && leftRelY < upThreshold);
-        
-        if (rightArmState === 'DOWN' && leftArmState === 'DOWN') {
-          if (bothUp && rightAngleValid && leftAngleValid) {
-            repetitions++;
-            rightArmState = 'UP';
-            leftArmState = 'UP';
-            repCounted = true;
+
+        function resetAll() {
+          repetitions = 0;
+          rightArmState = "DOWN";
+          leftArmState = "DOWN";
+          updateUI();
+          updateHandIndicators();
+        }
+
+        // ---------- Слайдер угла ----------
+        minAngleSlider.addEventListener("input", () => {
+          minElbowAngle = parseInt(minAngleSlider.value);
+          minAngleValue.textContent = minElbowAngle + "°";
+        });
+
+        handButtons.forEach((btn) => {
+          btn.addEventListener("click", () => {
+            if (isActive) {
+              if (!confirm("Смена режима рук сбросит счётчик. Продолжить?"))
+                return;
+            }
+            handButtons.forEach((b) => b.classList.remove("active"));
+            btn.classList.add("active");
+            handMode = btn.dataset.hand;
+            resetAll();
+            if (isActive) setStatus("Режим сменён", "idle");
+          });
+        });
+
+        // ---------- Обработка Pose ----------
+        function onPoseResults(results) {
+          frameCounter++;
+          if (frameCounter % FRAME_SKIP !== 0) {
+            drawPose(results);
+            return;
           }
-        } else if (rightArmState === 'UP' && leftArmState === 'UP') {
-          if (bothDown) {
-            rightArmState = 'DOWN';
-            leftArmState = 'DOWN';
+
+          drawPose(results);
+
+          if (results.poseLandmarks && isActive) {
+            processPoseForReps(results.poseLandmarks);
           }
         }
-      }
 
-      if (repCounted) {
-        updateUI();
-        setStatus('Подъём!', 'active');
-        updateHandIndicators();
-      } else {
-        updateHandIndicators();
-        if (handMode === 'single') {
-          setStatus(rightArmState === 'UP' || leftArmState === 'UP' ? 'Рука вверху' : 'Рука внизу', 
-                    rightArmState === 'UP' || leftArmState === 'UP' ? 'active' : 'idle');
-        } else {
-          setStatus(rightArmState === 'UP' ? 'Обе вверху' : 'Обе внизу', 
-                    rightArmState === 'UP' ? 'active' : 'idle');
-        }
-      }
-    }
+        function drawPose(results) {
+          ctx.clearRect(0, 0, canvasElement.width, canvasElement.height);
 
-    function calculateElbowAngle(shoulder, elbow, wrist) {
-      const vector1 = {
-        x: elbow.x - shoulder.x,
-        y: elbow.y - shoulder.y
-      };
-      const vector2 = {
-        x: wrist.x - elbow.x,
-        y: wrist.y - elbow.y
-      };
-      
-      const dotProduct = vector1.x * vector2.x + vector1.y * vector2.y;
-      const magnitude1 = Math.sqrt(vector1.x * vector1.x + vector1.y * vector1.y);
-      const magnitude2 = Math.sqrt(vector2.x * vector2.x + vector2.y * vector2.y);
-      
-      if (magnitude1 === 0 || magnitude2 === 0) return 0;
-      
-      const cosAngle = dotProduct / (magnitude1 * magnitude2);
-      const angleRad = Math.acos(Math.max(-1, Math.min(1, cosAngle)));
-      return angleRad * (180 / Math.PI);
-    }
-
-    // ---------- MediaPipe ----------
-    async function initPose() {
-      pose = new Pose({
-        locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`
-      });
-      
-      pose.setOptions({
-        modelComplexity: 0,
-        smoothLandmarks: true,
-        enableSegmentation: false,
-        smoothSegmentation: false,
-        minDetectionConfidence: 0.6,
-        minTrackingConfidence: 0.5
-      });
-
-      pose.onResults(onPoseResults);
-    }
-
-    // ---------- Камера ----------
-    async function startCamera() {
-      if (cameraInstance) return;
-      if (!pose) await initPose();
-
-      const Camera = window.Camera;
-      cameraInstance = new Camera(videoElement, {
-        onFrame: async () => {
-          if (pose && videoElement.readyState >= 2) {
-            await pose.send({ image: videoElement });
+          if (videoElement.videoWidth && videoElement.videoHeight) {
+            canvasElement.width = videoElement.videoWidth;
+            canvasElement.height = videoElement.videoHeight;
           }
-        },
-        width: MOBILE_WIDTH,
-        height: MOBILE_HEIGHT,
-        facingMode: 'user',
-        frameRate: 24
-      });
 
-      try {
-        await cameraInstance.start();
-      } catch (err) {
-        console.error('Ошибка камеры:', err);
-        alert('Не удалось получить доступ к камере.');
-        cameraInstance = null;
-        throw err;
-      }
-    }
+          if (results.poseLandmarks) {
+            window.drawConnectors(
+              ctx,
+              results.poseLandmarks,
+              window.POSE_CONNECTIONS,
+              { color: "#ffd966", lineWidth: 1.5 }
+            );
+            window.drawLandmarks(ctx, results.poseLandmarks, {
+              color: "#ff9f2f",
+              lineWidth: 1,
+              radius: 2,
+            });
+          }
+        }
 
-    function stopCamera() {
-      if (cameraInstance) {
-        cameraInstance.stop();
-        cameraInstance = null;
-        ctx.clearRect(0, 0, canvasElement.width, canvasElement.height);
-      }
-    }
+        function processPoseForReps(landmarks) {
+          if (!landmarks || landmarks.length < 17) return;
 
-    // ---------- Кнопки Старт/Стоп ----------
-    async function onStart() {
-      if (isActive) return;
-      try {
-        if (!cameraInstance) await startCamera();
-        resetAll();
-        resetTimer();
-        startTimer();
-        isActive = true;
-        frameCounter = 0;
-        startBtn.disabled = true;
-        stopBtn.disabled = false;
-        setStatus('Активен', 'active');
-      } catch (e) {
-        console.error(e);
-      }
-    }
+          const rightShoulder = landmarks[12];
+          const rightElbow = landmarks[14];
+          const rightWrist = landmarks[16];
+          const leftShoulder = landmarks[11];
+          const leftElbow = landmarks[13];
+          const leftWrist = landmarks[15];
 
-    function onStop() {
-      if (!isActive) return;
-      isActive = false;
-      stopTimer();
-      startBtn.disabled = false;
-      stopBtn.disabled = true;
-      setStatus('Остановлен', 'idle');
-    }
+          // Используем единый метод getArmState для обеих рук
+          let newRightState = getArmState(
+            rightShoulder,
+            rightElbow,
+            rightWrist,
+            minElbowAngle
+          );
+          let newLeftState = getArmState(
+            leftShoulder,
+            leftElbow,
+            leftWrist,
+            minElbowAngle
+          );
 
-    startBtn.addEventListener('click', onStart);
-    stopBtn.addEventListener('click', onStop);
+          // Обрабатываем промежуточное состояние MIDDLE — сохраняем предыдущее
+          if (newRightState === "MIDDLE") newRightState = rightArmState;
+          if (newLeftState === "MIDDLE") newLeftState = leftArmState;
 
-    // ---------- Запуск ----------
-    async function bootstrap() {
-      await initPose();
-      stopBtn.disabled = true;
-      startBtn.disabled = false;
-      setStatus('Готов к старту', 'idle');
-      updateUI();
-      updateTimerDisplay();
-      updateGuideText();
-    }
+          let repCounted = false;
 
-    bootstrap().catch(err => console.error('Ошибка инициализации:', err));
+          if (handMode === "single") {
+            // Режим одной руки: засчитываем любое поднятие
+            if (rightArmState === "DOWN" && newRightState === "UP") {
+              repetitions++;
+              repCounted = true;
+            }
 
-    window.addEventListener('beforeunload', () => {
-      stopTimer();
-      if (cameraInstance) cameraInstance.stop();
-    });
+            if (leftArmState === "DOWN" && newLeftState === "UP") {
+              repetitions++;
+              repCounted = true;
+            }
 
-  })();
-</script>
-</body>
+            if (newRightState === "UP" || newRightState === "DOWN")
+              rightArmState = newRightState;
+
+            if (newLeftState === "UP" || newLeftState === "DOWN")
+              leftArmState = newLeftState;
+
+          } else {
+            // Режим двух рук: обе должны быть внизу, потом обе вверху
+            if (rightArmState === "DOWN" && leftArmState === "DOWN") {
+              if (newRightState === "UP" && newLeftState === "UP") {
+                repetitions++;
+                repCounted = true;
+                rightArmState = "UP";
+                leftArmState = "UP";
+              }
+            } else if (rightArmState === "UP" && leftArmState === "UP") {
+              if (newRightState === "DOWN" && newLeftState === "DOWN") {
+                rightArmState = "DOWN";
+                leftArmState = "DOWN";
+              }
+            }
+          }
+
+          if (repCounted) {
+            updateUI();
+            setStatus("Подъём!", "active");
+          }
+
+          updateHandIndicators();
+
+          // Обновляем текстовый статус
+          if (handMode === "single") {
+            const anyUp = rightArmState === "UP" || leftArmState === "UP";
+            const anyAngle =
+              rightArmState === "ANGLE" || leftArmState === "ANGLE";
+            if (anyAngle) {
+              setStatus("Угол неверный", "idle");
+            } else {
+              setStatus(
+                anyUp ? "Рука вверху" : "Рука внизу",
+                anyUp ? "active" : "idle"
+              );
+            }
+          } else {
+            if (rightArmState === "ANGLE" || leftArmState === "ANGLE") {
+              setStatus("Угол неверный", "idle");
+            } else {
+              setStatus(
+                rightArmState === "UP" ? "Обе вверху" : "Обе внизу",
+                rightArmState === "UP" ? "active" : "idle"
+              );
+            }
+          }
+        }
+
+        // ---------- MediaPipe ----------
+        async function initPose() {
+          pose = new Pose({
+            locateFile: (file) =>
+              `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`,
+          });
+
+          pose.setOptions({
+            modelComplexity: 0,
+            smoothLandmarks: true,
+            enableSegmentation: false,
+            smoothSegmentation: false,
+            minDetectionConfidence: 0.6,
+            minTrackingConfidence: 0.5,
+          });
+
+          pose.onResults(onPoseResults);
+        }
+
+        // ---------- Камера ----------
+        async function startCamera() {
+          if (cameraInstance) return;
+          if (!pose) await initPose();
+
+          const Camera = window.Camera;
+          cameraInstance = new Camera(videoElement, {
+            onFrame: async () => {
+              if (pose && videoElement.readyState >= 2) {
+                await pose.send({ image: videoElement });
+              }
+            },
+            width: MOBILE_WIDTH,
+            height: MOBILE_HEIGHT,
+            facingMode: "user",
+            frameRate: 24,
+          });
+
+          try {
+            await cameraInstance.start();
+          } catch (err) {
+            console.error("Ошибка камеры:", err);
+            alert("Не удалось получить доступ к камере.");
+            cameraInstance = null;
+            throw err;
+          }
+        }
+
+        function stopCamera() {
+          if (cameraInstance) {
+            cameraInstance.stop();
+            cameraInstance = null;
+            ctx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+          }
+        }
+
+        // ---------- Кнопки Старт/Стоп ----------
+        async function onStart() {
+          if (isActive) return;
+          try {
+            if (!cameraInstance) await startCamera();
+            resetAll();
+            resetTimer();
+            startTimer();
+            isActive = true;
+            frameCounter = 0;
+            startBtn.disabled = true;
+            stopBtn.disabled = false;
+            setStatus("Активен", "active");
+          } catch (e) {
+            console.error(e);
+          }
+        }
+
+        function onStop() {
+          if (!isActive) return;
+          isActive = false;
+          stopTimer();
+          startBtn.disabled = false;
+          stopBtn.disabled = true;
+          setStatus("Остановлен", "idle");
+        }
+
+        startBtn.addEventListener("click", onStart);
+        stopBtn.addEventListener("click", onStop);
+
+        // ---------- Запуск ----------
+        async function bootstrap() {
+          await initPose();
+          stopBtn.disabled = true;
+          startBtn.disabled = false;
+          setStatus("Готов к старту", "idle");
+          updateUI();
+          updateTimerDisplay();
+        }
+
+        bootstrap().catch((err) => console.error("Ошибка инициализации:", err));
+
+        window.addEventListener("beforeunload", () => {
+          stopTimer();
+          if (cameraInstance) cameraInstance.stop();
+        });
+      })();
+    </script>
+  </body>
 </html>
