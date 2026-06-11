@@ -499,7 +499,6 @@
     modeButtons.forEach(btn => {
       btn.addEventListener('click', () => {
         if (isActive) {
-          // Если активно, предупреждаем или просто меняем со сбросом
           if (!confirm('Смена режима во время подсчёта сбросит счётчик и состояние. Продолжить?')) {
             return;
           }
@@ -519,7 +518,6 @@
         console.log('Режим переключен на:', currentMode);
       });
       
-      // Мобильная поддержка
       btn.addEventListener('touchstart', (e) => {
         e.preventDefault();
         btn.click();
@@ -588,48 +586,49 @@
           stateMessage = 'Толчок';
           break;
         case 'fullCycle':
-          // Полный цикл: такие же пороги как рывок, но проверяем полное движение
           downThreshold = SNATCH_DOWN_THRESHOLD;
           upThreshold = SNATCH_UP_THRESHOLD;
           stateMessage = 'Цикл';
           break;
       }
 
-      // Конечный автомат для всех режимов
+      // Конечный автомат: счётчик увеличивается при ПОДЪЁМЕ руки
       if (armState === 'DOWN') {
         // Ждём подъёма руки выше порога
         if (relativeY < upThreshold) {
-          armState = 'UP';
-          console.log(`${stateMessage}: рука вверху`);
-          if (isActive) setStatus('Рука вверху', 'active');
-        }
-      } else if (armState === 'UP') {
-        // Ждём опускания руки ниже порога
-        if (relativeY > downThreshold) {
-          armState = 'DOWN';
-          
-          // Для толчка дополнительно проверяем, что локоть был выпрямлен
+          // Проверка для толчка: рука должна быть выпрямлена
           if (currentMode === 'jerk') {
-            // Проверяем угол в локте: вектор плечо-локоть и локоть-запястье
             const elbowAngle = calculateElbowAngle(rightShoulder, rightElbow, rightWrist);
-            // Угол должен быть больше 150 градусов (почти прямая рука)
             if (elbowAngle < 150) {
-              console.log('Толчок: рука недостаточно выпрямлена, повтор не засчитан');
-              if (isActive) setStatus('Рука внизу', 'idle');
+              // Рука недостаточно выпрямлена, не считаем
+              console.log('Толчок: рука согнута, повтор не засчитан');
               return;
             }
           }
           
+          // Засчитываем повторение в момент подъёма
           repetitions++;
           updateUI();
-          console.log(`${stateMessage}: повторение! Всего: ${repetitions}`);
+          armState = 'UP';
+          console.log(`${stateMessage}: подъём! Повторение ${repetitions}`);
+          if (isActive) setStatus('Подъём!', 'active');
+        }
+      } else if (armState === 'UP') {
+        // Ждём опускания руки ниже порога для сброса состояния
+        if (relativeY > downThreshold) {
+          armState = 'DOWN';
+          console.log(`${stateMessage}: рука опущена, готов к следующему повтору`);
           if (isActive) setStatus('Рука внизу', 'idle');
         }
       }
       
-      // Обновляем статус если не обновили внутри
-      if (isActive && armState === 'DOWN') {
-        setStatus('Рука внизу', 'idle');
+      // Обновляем статус если нужно
+      if (isActive) {
+        if (armState === 'DOWN' && relativeY > downThreshold) {
+          setStatus('Рука внизу', 'idle');
+        } else if (armState === 'UP' && relativeY < upThreshold) {
+          setStatus('Рука вверху', 'active');
+        }
       }
     }
 
