@@ -82,41 +82,6 @@
         border-radius: 24px;
       }
 
-      .mode-selector {
-        display: flex;
-        gap: 4px;
-        margin-bottom: 8px;
-        background: rgba(16, 19, 28, 0.7);
-        border-radius: 40px;
-        padding: 3px;
-        width: 100%;
-        max-width: 380px;
-      }
-
-      .mode-btn {
-        flex: 1;
-        padding: 8px 6px;
-        border-radius: 36px;
-        border: none;
-        background: transparent;
-        color: #8890aa;
-        font-weight: 600;
-        font-size: 0.7rem;
-        cursor: pointer;
-        transition: all 0.2s ease;
-        white-space: nowrap;
-        text-transform: uppercase;
-        letter-spacing: 0.3px;
-        touch-action: manipulation;
-      }
-
-      .mode-btn.active {
-        background: linear-gradient(135deg, #f5a623, #c97a0a);
-        color: #0a0c12;
-        box-shadow: 0 4px 12px rgba(245, 166, 35, 0.35);
-        font-weight: 700;
-      }
-
       .hand-selector {
         display: flex;
         gap: 4px;
@@ -221,7 +186,7 @@
         box-shadow: 0 16px 28px rgba(0, 0, 0, 0.7);
         margin-bottom: 12px;
         background: #05070c;
-        aspect-ratio: 4/3;
+        /* Убираем фиксированный aspect-ratio, высота будет определяться JS */
       }
 
       video,
@@ -231,9 +196,9 @@
         left: 0;
         width: 100%;
         height: 100%;
-        object-fit: cover;
         display: block;
         transform: scaleX(-1);
+        /* Убираем object-fit: cover, чтобы не обрезалось */
       }
 
       canvas {
@@ -484,7 +449,7 @@
         </div>
       </div>
 
-      <div class="video-wrapper">
+      <div class="video-wrapper" id="videoWrapper">
         <video id="inputVideo" autoplay playsinline muted></video>
         <canvas id="outputCanvas"></canvas>
       </div>
@@ -540,6 +505,7 @@
         // ---------- DOM элементы ----------
         const videoElement = document.getElementById("inputVideo");
         const canvasElement = document.getElementById("outputCanvas");
+        const videoWrapper = document.getElementById("videoWrapper");
         const ctx = canvasElement.getContext("2d");
         const repCounterSpan = document.getElementById("repCounter");
         const timerDisplay = document.getElementById("timerDisplay");
@@ -563,7 +529,7 @@
         let minElbowAngle = 150;
 
         const MOBILE_WIDTH = 480;
-        const MOBILE_HEIGHT = 360;
+        const MOBILE_HEIGHT = 640;
         const FRAME_SKIP = 2;
         let frameCounter = 0;
 
@@ -575,6 +541,9 @@
         let timerInterval = null;
         let startTime = null;
         let elapsedSeconds = 0;
+
+        // Переменная для отслеживания, настроено ли уже соотношение сторон
+        let aspectRatioSet = false;
 
         function formatTime(totalSeconds) {
           const mins = Math.floor(totalSeconds / 60);
@@ -656,6 +625,43 @@
           updateHandIndicators();
         }
 
+        // ---------- Адаптивная высота контейнера видео ----------
+        function adjustVideoWrapperSize() {
+          if (!videoElement.videoWidth || !videoElement.videoHeight) return;
+          
+          const wrapperWidth = videoWrapper.clientWidth;
+          const videoRatio = videoElement.videoHeight / videoElement.videoWidth;
+          // Высота должна соответствовать соотношению сторон видео
+          const calculatedHeight = wrapperWidth * videoRatio;
+          
+          videoWrapper.style.height = calculatedHeight + "px";
+          
+          // Синхронизируем размеры canvas с video
+          canvasElement.width = videoElement.videoWidth;
+          canvasElement.height = videoElement.videoHeight;
+          
+          aspectRatioSet = true;
+        }
+
+        // Слушаем изменение размера окна для пересчета высоты
+        window.addEventListener("resize", () => {
+          if (videoElement.videoWidth && videoElement.videoHeight) {
+            adjustVideoWrapperSize();
+          }
+        });
+
+        // Слушаем, когда видео начнет воспроизводиться и станут известны его размеры
+        videoElement.addEventListener("loadedmetadata", () => {
+          adjustVideoWrapperSize();
+        });
+
+        // Дополнительно проверяем при каждом воспроизведении
+        videoElement.addEventListener("play", () => {
+          if (!aspectRatioSet && videoElement.videoWidth && videoElement.videoHeight) {
+            adjustVideoWrapperSize();
+          }
+        });
+
         // ---------- Слайдер угла ----------
         minAngleSlider.addEventListener("input", () => {
           minElbowAngle = parseInt(minAngleSlider.value);
@@ -694,23 +700,23 @@
         function drawPose(results) {
           ctx.clearRect(0, 0, canvasElement.width, canvasElement.height);
 
-          if (videoElement.videoWidth && videoElement.videoHeight) {
-            canvasElement.width = videoElement.videoWidth;
-            canvasElement.height = videoElement.videoHeight;
-          }
-
           if (results.poseLandmarks) {
-            window.drawConnectors(
-              ctx,
-              results.poseLandmarks,
-              window.POSE_CONNECTIONS,
-              { color: "#ffd966", lineWidth: 1.5 }
-            );
-            window.drawLandmarks(ctx, results.poseLandmarks, {
-              color: "#ff9f2f",
-              lineWidth: 1,
-              radius: 2,
-            });
+            // Рисуем скелет с помощью drawing_utils
+            if (window.drawConnectors && window.POSE_CONNECTIONS) {
+              window.drawConnectors(
+                ctx,
+                results.poseLandmarks,
+                window.POSE_CONNECTIONS,
+                { color: "#ffd966", lineWidth: 1.5 }
+              );
+            }
+            if (window.drawLandmarks) {
+              window.drawLandmarks(ctx, results.poseLandmarks, {
+                color: "#ff9f2f",
+                lineWidth: 1,
+                radius: 2,
+              });
+            }
           }
         }
 
@@ -761,7 +767,6 @@
 
             if (newLeftState === "UP" || newLeftState === "DOWN")
               leftArmState = newLeftState;
-
           } else {
             // Режим двух рук: обе должны быть внизу, потом обе вверху
             if (rightArmState === "DOWN" && leftArmState === "DOWN") {
@@ -842,14 +847,20 @@
                 await pose.send({ image: videoElement });
               }
             },
-            width: MOBILE_WIDTH,
-            height: MOBILE_HEIGHT,
+            width: { ideal: MOBILE_WIDTH },
+            height: { ideal: MOBILE_HEIGHT },
             facingMode: "user",
             frameRate: 24,
           });
 
           try {
             await cameraInstance.start();
+            // Даем камере время на инициализацию, затем настраиваем размер
+            setTimeout(() => {
+              if (videoElement.videoWidth && videoElement.videoHeight) {
+                adjustVideoWrapperSize();
+              }
+            }, 500);
           } catch (err) {
             console.error("Ошибка камеры:", err);
             alert("Не удалось получить доступ к камере.");
