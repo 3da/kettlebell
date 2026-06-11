@@ -582,7 +582,7 @@
         <button class="btn stop-btn" id="stopBtn"><span>⏹️</span> Стоп</button>
       </div>
 
-      <div class="record-checkbox-wrapper">
+      <div class="record-checkbox-wrapper" style="display: none">
         <input type="checkbox" id="recordCheckbox" />
         <label for="recordCheckbox">Записывать экран</label>
       </div>
@@ -618,6 +618,13 @@
         const recordCheckBox = document.getElementById("recordCheckbox");
 
         const fixationBtns = document.querySelectorAll(".fixation-btn");
+
+        if (
+          navigator.mediaDevices &&
+          "getDisplayMedia" in navigator.mediaDevices
+        ) {
+          recordCheckBox.parentElement.style.display = "flex";
+        }
 
         // ---------- Глобальные переменные ----------
         let pose;
