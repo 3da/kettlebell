@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>Подсчёт рывков гири | MediaPipe Pose</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+
+    body {
+      font-family: 'Montserrat', sans-serif;
+      background: #121520;
+      min-height: 100vh;
+      min-height: -webkit-fill-available;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 12px;
+      margin: 0;
+      color: #f0f2f5;
+      touch-action: manipulation;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 480px;
+      background: rgba(22, 26, 36, 0.95);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-radius: 32px;
+      padding: 16px 14px 24px;
+      box-shadow: 0 25px 45px rgba(0, 0, 0, 0.7), inset 0 1px 1px rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    h1 {
+      font-size: clamp(1.6rem, 5vw, 2rem);
+      font-weight: 700;
+      letter-spacing: -0.3px;
+      background: linear-gradient(to right, #f7971e, #ffd200);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 4px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .subtitle {
+      font-weight: 400;
+      color: #9aa0b5;
+      margin-bottom: 14px;
+      font-size: 0.8rem;
+      background: rgba(255, 255, 255, 0.04);
+      padding: 4px 16px;
+      border-radius: 24px;
+    }
+
+    .video-wrapper {
+      position: relative;
+      width: 100%;
+      max-width: 100%;
+      border-radius: 28px;
+      overflow: hidden;
+      box-shadow: 0 16px 28px rgba(0,0,0,0.7);
+      margin-bottom: 16px;
+      background: #05070c;
+      aspect-ratio: 4/3;
+    }
+
+    video, canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+      transform: scaleX(-1); /* Зеркальное отображение для удобства */
+    }
+
+    canvas {
+      z-index: 10;
+    }
+
+    .counter-panel {
+      background: rgba(16, 19, 28, 0.85);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border-radius: 80px;
+      padding: 10px 24px;
+      margin-bottom: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 18px;
+      border: 1px solid rgba(255, 215, 0, 0.2);
+      box-shadow: 0 10px 20px rgba(0,0,0,0.5);
+      width: fit-content;
+    }
+
+    .count-box {
+      display: flex;
+      align-items: baseline;
+      gap: 6px;
+    }
+
+    .count-label {
+      font-weight: 600;
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 1.2px;
+      color: #a0a9c4;
+    }
+
+    .count-number {
+      font-size: clamp(2.5rem, 10vw, 3.3rem);
+      font-weight: 700;
+      background: linear-gradient(to bottom, #ffe79e, #e6961c);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      line-height: 1;
+      min-width: 56px;
+      text-align: center;
+    }
+
+    .state-badge {
+      background: #262d3b;
+      padding: 8px 18px;
+      border-radius: 36px;
+      font-weight: 600;
+      font-size: 0.75rem;
+      color: #cfd7ea;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      white-space: nowrap;
+    }
+
+    .state-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #aaa;
+      display: inline-block;
+    }
+    .state-dot.active {
+      background: #4cff8c;
+      box-shadow: 0 0 14px #1ce65f;
+    }
+    .state-dot.idle {
+      background: #ffb347;
+    }
+
+    .controls {
+      display: flex;
+      gap: 14px;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin: 4px 0 10px;
+      width: 100%;
+    }
+
+    .btn {
+      background: #2f3547;
+      border: none;
+      padding: 13px 24px;
+      border-radius: 48px;
+      font-weight: 700;
+      font-size: 0.95rem;
+      letter-spacing: 0.6px;
+      color: #eef3ff;
+      cursor: pointer;
+      background: linear-gradient(135deg, #3b4254, #242a38);
+      box-shadow: 0 8px 16px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.08);
+      transition: all 0.15s ease;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border: 1px solid rgba(255,255,255,0.05);
+      text-transform: uppercase;
+      flex: 1;
+      justify-content: center;
+      min-width: 110px;
+      touch-action: manipulation;
+    }
+
+    .btn:active {
+      transform: scale(0.96);
+      box-shadow: 0 4px 10px rgba(0,0,0,0.6);
+    }
+
+    .start-btn {
+      background: linear-gradient(135deg, #f5a623, #c97a0a);
+      color: #0a0c12;
+      border: 1px solid rgba(255,200,0,0.5);
+      font-weight: 700;
+    }
+
+    .stop-btn {
+      background: linear-gradient(135deg, #e63946, #a61b2a);
+      color: white;
+      border: 1px solid rgba(255,100,100,0.35);
+    }
+
+    .btn:disabled {
+      opacity: 0.45;
+      pointer-events: none;
+      filter: grayscale(0.5);
+    }
+
+    .guide-text {
+      font-size: 0.7rem;
+      color: #7e869c;
+      margin-top: 6px;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      text-align: center;
+    }
+
+    /* Адаптация под маленькие экраны */
+    @media (max-width: 400px) {
+      .container {
+        padding: 12px 10px 20px;
+        border-radius: 24px;
+      }
+      .btn {
+        padding: 12px 16px;
+        font-size: 0.85rem;
+        gap: 4px;
+      }
+      .counter-panel {
+        padding: 8px 18px;
+        gap: 12px;
+      }
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <h1>🏋️ Рывок гири</h1>
+  <div class="subtitle">MediaPipe Pose · мобильная версия</div>
+
+  <div class="video-wrapper">
+    <video id="inputVideo" autoplay playsinline muted></video>
+    <canvas id="outputCanvas"></canvas>
+  </div>
+
+  <div class="counter-panel">
+    <div class="count-box">
+      <span class="count-label">Повторения</span>
+      <span class="count-number" id="repCounter">0</span>
+    </div>
+    <div class="state-badge">
+      <span class="state-dot" id="stateDot"></span>
+      <span id="statusText">Ожидание</span>
+    </div>
+  </div>
+
+  <div class="controls">
+    <button class="btn start-btn" id="startBtn">
+      <span>▶</span> Старт
+    </button>
+    <button class="btn stop-btn" id="stopBtn">
+      <span>⏹️</span> Стоп
+    </button>
+  </div>
+  <div class="guide-text">
+    <span>💡 Встаньте боком. Поднимайте руку снизу вверх.</span>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js"></script>
+
+<script>
+  (function() {
+    // ---------- DOM элементы ----------
+    const videoElement = document.getElementById('inputVideo');
+    const canvasElement = document.getElementById('outputCanvas');
+    const ctx = canvasElement.getContext('2d');
+    const repCounterSpan = document.getElementById('repCounter');
+    const stateDot = document.getElementById('stateDot');
+    const statusText = document.getElementById('statusText');
+    const startBtn = document.getElementById('startBtn');
+    const stopBtn = document.getElementById('stopBtn');
+
+    // ---------- Глобальные переменные ----------
+    let pose;
+    let cameraInstance = null;
+    let isActive = false;
+    let repetitions = 0;
+    
+    // Параметры оптимизации для мобильных
+    const MOBILE_WIDTH = 480;
+    const MOBILE_HEIGHT = 360;
+    const FRAME_SKIP = 2; // Обрабатывать каждый 2-й кадр для снижения нагрузки
+    let frameCounter = 0;
+    
+    // Логика рывка
+    const DOWN_THRESHOLD = 0.15;
+    const UP_THRESHOLD = -0.25;
+    let armState = 'DOWN';
+    let lastArmYRelative = null;
+
+    // ---------- Функции обновления UI ----------
+    function updateUI() {
+      repCounterSpan.textContent = repetitions;
+    }
+
+    function setStatus(state, dotClass) {
+      stateDot.className = 'state-dot ' + dotClass;
+      statusText.textContent = state;
+    }
+
+    function resetCounterAndState() {
+      repetitions = 0;
+      armState = 'DOWN';
+      lastArmYRelative = null;
+      updateUI();
+    }
+
+    // ---------- Обработка результатов Pose с оптимизацией кадров ----------
+    function onPoseResults(results) {
+      // Пропускаем кадры для снижения нагрузки на CPU
+      frameCounter++;
+      if (frameCounter % FRAME_SKIP !== 0) {
+        // Всё равно рисуем, но не анализируем движение каждый кадр
+        drawPose(results);
+        return;
+      }
+      
+      drawPose(results);
+      
+      if (results.poseLandmarks && isActive) {
+        processPoseForReps(results.poseLandmarks);
+      }
+    }
+
+    function drawPose(results) {
+      ctx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+      
+      if (videoElement.videoWidth && videoElement.videoHeight) {
+        canvasElement.width = videoElement.videoWidth;
+        canvasElement.height = videoElement.videoHeight;
+      }
+
+      if (results.poseLandmarks) {
+        // Оптимизированная отрисовка: меньше деталей
+        window.drawConnectors(ctx, results.poseLandmarks, window.POSE_CONNECTIONS, 
+          { color: '#ffd966', lineWidth: 1.8 });
+        window.drawLandmarks(ctx, results.poseLandmarks, 
+          { color: '#ff9f2f', lineWidth: 1.2, radius: 2.5 });
+      }
+    }
+
+    function processPoseForReps(landmarks) {
+      if (!landmarks || landmarks.length < 17) return;
+      
+      const rightShoulder = landmarks[12];
+      const rightWrist = landmarks[16];
+      
+      if (rightShoulder.visibility < 0.55 || rightWrist.visibility < 0.55) {
+        return;
+      }
+
+      const relativeY = rightWrist.y - rightShoulder.y;
+      lastArmYRelative = relativeY;
+
+      if (armState === 'DOWN') {
+        if (relativeY < UP_THRESHOLD) {
+          armState = 'UP';
+          console.log('Рука вверху');
+        }
+      } else if (armState === 'UP') {
+        if (relativeY > DOWN_THRESHOLD) {
+          armState = 'DOWN';
+          repetitions++;
+          updateUI();
+          console.log(`Повторение! Всего: ${repetitions}`);
+        }
+      }
+      
+      if (isActive) {
+        if (armState === 'DOWN') {
+          setStatus('Рука внизу', 'idle');
+        } else {
+          setStatus('Рука вверху', 'active');
+        }
+      }
+    }
+
+    // ---------- Инициализация MediaPipe с мобильными настройками ----------
+    async function initPose() {
+      pose = new Pose({
+        locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`
+      });
+      
+      pose.setOptions({
+        modelComplexity: 0,          // 0 - Lite (быстрее для мобильных)
+        smoothLandmarks: true,
+        enableSegmentation: false,
+        smoothSegmentation: false,
+        minDetectionConfidence: 0.6,
+        minTrackingConfidence: 0.5
+      });
+
+      pose.onResults(onPoseResults);
+    }
+
+    // ---------- Управление камерой с низким разрешением ----------
+    async function startCamera() {
+      if (cameraInstance) return;
+      
+      if (!pose) {
+        await initPose();
+      }
+
+      const Camera = window.Camera;
+      cameraInstance = new Camera(videoElement, {
+        onFrame: async () => {
+          if (pose && videoElement.readyState >= 2) {
+            await pose.send({ image: videoElement });
+          }
+        },
+        width: MOBILE_WIDTH,
+        height: MOBILE_HEIGHT,
+        facingMode: 'user',          // Фронтальная камера
+        frameRate: 24               // Ограничение FPS
+      });
+
+      try {
+        await cameraInstance.start();
+        console.log('Камера запущена (моб. режим)');
+      } catch (err) {
+        console.error('Ошибка камеры:', err);
+        alert('Не удалось получить доступ к камере.');
+        cameraInstance = null;
+        throw err;
+      }
+    }
+
+    function stopCamera() {
+      if (cameraInstance) {
+        cameraInstance.stop();
+        cameraInstance = null;
+        ctx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+      }
+    }
+
+    // ---------- Обработчики кнопок ----------
+    async function onStart() {
+      if (isActive) return;
+      
+      try {
+        if (!cameraInstance) {
+          await startCamera();
+        }
+        
+        resetCounterAndState();
+        isActive = true;
+        frameCounter = 0;
+        
+        startBtn.disabled = true;
+        stopBtn.disabled = false;
+        setStatus('Активен', 'active');
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    function onStop() {
+      if (!isActive) return;
+      
+      isActive = false;
+      startBtn.disabled = false;
+      stopBtn.disabled = true;
+      setStatus('Остановлен', 'idle');
+    }
+
+    // Привязка событий (используем pointer для лучшей мобильной реакции)
+    startBtn.addEventListener('click', onStart);
+    stopBtn.addEventListener('click', onStop);
+    
+    // Предотвращаем двойной тап и зум на кнопках
+    [startBtn, stopBtn].forEach(btn => {
+      btn.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        btn.click();
+      });
+    });
+
+    // ---------- Запуск приложения ----------
+    async function bootstrap() {
+      await initPose();
+      
+      stopBtn.disabled = true;
+      startBtn.disabled = false;
+      setStatus('Готов к старту', 'idle');
+      updateUI();
+      
+      // Обработка изменения ориентации для перезапуска камеры (опционально)
+      window.addEventListener('orientationchange', () => {
+        setTimeout(() => {
+          if (cameraInstance && isActive) {
+            // Кратковременная пауза для пересчета размеров
+            console.log('Ориентация изменена, камера продолжает работу');
+          }
+        }, 300);
+      });
+    }
+
+    bootstrap().catch(err => console.error('Ошибка инициализации:', err));
+
+    window.addEventListener('beforeunload', () => {
+      if (cameraInstance) {
+        cameraInstance.stop();
+      }
+    });
+
+  })();
+</script>
+</body>
+</html>
