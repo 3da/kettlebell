@@ -80,3 +80,85 @@ function calculateElbowAngle(shoulder, elbow, wrist) {
     return angleDeg;
 }
 
+var state = {
+}
+
+function clearState() {
+    state = {
+        rightArmState: "DOWN",
+        leftArmState: "DOWN",
+        repetitions: 0,
+    }
+}
+
+clearState();
+
+function processPoseForReps(landmarks, minElbowAngle, handMode) {
+    if (!landmarks || landmarks.length < 17) return;
+
+    const rightShoulder = landmarks[12];
+    const rightElbow = landmarks[14];
+    const rightWrist = landmarks[16];
+    const leftShoulder = landmarks[11];
+    const leftElbow = landmarks[13];
+    const leftWrist = landmarks[15];
+
+    let newRightState = getArmState(
+        rightShoulder,
+        rightElbow,
+        rightWrist,
+        minElbowAngle
+    );
+    let newLeftState = getArmState(
+        leftShoulder,
+        leftElbow,
+        leftWrist,
+        minElbowAngle
+    );
+
+    if (newRightState === "MIDDLE") newRightState = state.rightArmState;
+    if (newLeftState === "MIDDLE") newLeftState = state.leftArmState;
+
+    let repCounted = false;
+
+    if (handMode === "single") {
+        if (state.rightArmState === "DOWN" && newRightState === "UP") {
+            state.repetitions++;
+            repCounted = true;
+        }
+        if (state.leftArmState === "DOWN" && newLeftState === "UP") {
+            state.repetitions++;
+            repCounted = true;
+        }
+        if (newRightState === "UP" || newRightState === "DOWN")
+            state.rightArmState = newRightState;
+        if (newLeftState === "UP" || newLeftState === "DOWN")
+            state.leftArmState = newLeftState;
+    } else {
+        if (state.rightArmState === "DOWN" && state.leftArmState === "DOWN") {
+            if (newRightState === "UP" && newLeftState === "UP") {
+                state.repetitions++;
+                repCounted = true;
+                state.rightArmState = "UP";
+                state.leftArmState = "UP";
+            }
+        } else if (state.rightArmState === "UP" && state.leftArmState === "UP") {
+            if (newRightState === "DOWN" && newLeftState === "DOWN") {
+                state.rightArmState = "DOWN";
+                state.leftArmState = "DOWN";
+            }
+        }
+    }
+
+    if (repCounted)
+        return true;
+
+    if (state.leftArmState === 'ANGLE' || state.rightArmState === 'ANGLE')
+        return 'ANGLE';
+
+    return false;
+
+
+}
+
+

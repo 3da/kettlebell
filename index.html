@@ -186,7 +186,7 @@
         box-shadow: 0 16px 28px rgba(0, 0, 0, 0.7);
         margin-bottom: 12px;
         background: #05070c;
-        /* Убираем фиксированный aspect-ratio, высота будет определяться JS */
+        /* Высота будет задаваться динамически через JS */
       }
 
       video,
@@ -198,7 +198,7 @@
         height: 100%;
         display: block;
         transform: scaleX(-1);
-        /* Убираем object-fit: cover, чтобы не обрезалось */
+        /* object-fit не нужен, так как размеры контейнера совпадают с видео */
       }
 
       canvas {
@@ -523,27 +523,18 @@
         let pose;
         let cameraInstance = null;
         let isActive = false;
-        let repetitions = 0;
 
         let handMode = "single"; // 'single' или 'both'
         let minElbowAngle = 150;
 
-        const MOBILE_WIDTH = 480;
-        const MOBILE_HEIGHT = 640;
         const FRAME_SKIP = 2;
         let frameCounter = 0;
 
-        // Состояния для обеих рук
-        let rightArmState = "DOWN";
-        let leftArmState = "DOWN";
 
         // ---------- Таймер ----------
         let timerInterval = null;
         let startTime = null;
         let elapsedSeconds = 0;
-
-        // Переменная для отслеживания, настроено ли уже соотношение сторон
-        let aspectRatioSet = false;
 
         function formatTime(totalSeconds) {
           const mins = Math.floor(totalSeconds / 60);
@@ -581,8 +572,44 @@
         }
 
         // ---------- UI функции ----------
-        function updateUI() {
-          repCounterSpan.textContent = repetitions;
+        function updateUI(status) {
+          repCounterSpan.textContent = state.repetitions;
+
+          if (status !== undefined) {
+            if (status === true) {
+              setStatus("Подъём!", "active");
+            }
+
+            updateHandIndicators();
+
+            if (handMode === "single") {
+              const anyUp =
+                state.rightArmState === "UP" || state.leftArmState === "UP";
+              const anyAngle =
+                state.rightArmState === "ANGLE" ||
+                state.leftArmState === "ANGLE";
+              if (anyAngle) {
+                setStatus("Угол неверный", "idle");
+              } else {
+                setStatus(
+                  anyUp ? "Рука вверху" : "Рука внизу",
+                  anyUp ? "active" : "idle"
+                );
+              }
+            } else {
+              if (
+                state.rightArmState === "ANGLE" ||
+                state.leftArmState === "ANGLE"
+              ) {
+                setStatus("Угол неверный", "idle");
+              } else {
+                setStatus(
+                  state.rightArmState === "UP" ? "Обе вверху" : "Обе внизу",
+                  state.rightArmState === "UP" ? "active" : "idle"
+                );
+              }
+            }
+          }
         }
 
         function setStatus(state, dotClass) {
@@ -591,8 +618,7 @@
         }
 
         function updateHandIndicators() {
-          // Правая рука
-          switch (rightArmState) {
+          switch (state.rightArmState) {
             case "UP":
               rightHandDot.className = "hand-dot right-up";
               break;
@@ -603,8 +629,7 @@
               rightHandDot.className = "hand-dot angle";
               break;
           }
-          // Левая рука
-          switch (leftArmState) {
+          switch (state.leftArmState) {
             case "UP":
               leftHandDot.className = "hand-dot left-up";
               break;
@@ -618,46 +643,44 @@
         }
 
         function resetAll() {
-          repetitions = 0;
-          rightArmState = "DOWN";
-          leftArmState = "DOWN";
+          clearState();
           updateUI();
           updateHandIndicators();
         }
 
-        // ---------- Адаптивная высота контейнера видео ----------
+        // ---------- Адаптивная высота контейнера под реальное видео ----------
         function adjustVideoWrapperSize() {
-          if (!videoElement.videoWidth || !videoElement.videoHeight) return;
-          
+          const vw = videoElement.videoWidth;
+          const vh = videoElement.videoHeight;
+
+          if (!vw || !vh) return;
+
           const wrapperWidth = videoWrapper.clientWidth;
-          const videoRatio = videoElement.videoHeight / videoElement.videoWidth;
-          // Высота должна соответствовать соотношению сторон видео
-          const calculatedHeight = wrapperWidth * videoRatio;
-          
-          videoWrapper.style.height = calculatedHeight + "px";
-          
-          // Синхронизируем размеры canvas с video
-          canvasElement.width = videoElement.videoWidth;
-          canvasElement.height = videoElement.videoHeight;
-          
-          aspectRatioSet = true;
+          // Вычисляем высоту, сохраняя точное соотношение сторон видео
+          const targetHeight = (vh / vw) * wrapperWidth;
+
+          videoWrapper.style.height = targetHeight + "px";
+
+          // Синхронизируем canvas с реальным разрешением видео
+          canvasElement.width = vw;
+          canvasElement.height = vh;
         }
 
-        // Слушаем изменение размера окна для пересчета высоты
+        // Пересчитываем при изменении размера окна
         window.addEventListener("resize", () => {
           if (videoElement.videoWidth && videoElement.videoHeight) {
             adjustVideoWrapperSize();
           }
         });
 
-        // Слушаем, когда видео начнет воспроизводиться и станут известны его размеры
+        // Как только метаданные видео загружены — подстраиваем контейнер
         videoElement.addEventListener("loadedmetadata", () => {
           adjustVideoWrapperSize();
         });
 
-        // Дополнительно проверяем при каждом воспроизведении
+        // Дополнительная подстраховка при старте воспроизведения
         videoElement.addEventListener("play", () => {
-          if (!aspectRatioSet && videoElement.videoWidth && videoElement.videoHeight) {
+          if (videoElement.videoWidth && videoElement.videoHeight) {
             adjustVideoWrapperSize();
           }
         });
@@ -693,7 +716,7 @@
           drawPose(results);
 
           if (results.poseLandmarks && isActive) {
-            processPoseForReps(results.poseLandmarks);
+            updateUI(processPoseForReps(results.poseLandmarks, minElbowAngle, handMode));
           }
         }
 
@@ -701,7 +724,6 @@
           ctx.clearRect(0, 0, canvasElement.width, canvasElement.height);
 
           if (results.poseLandmarks) {
-            // Рисуем скелет с помощью drawing_utils
             if (window.drawConnectors && window.POSE_CONNECTIONS) {
               window.drawConnectors(
                 ctx,
@@ -720,101 +742,6 @@
           }
         }
 
-        function processPoseForReps(landmarks) {
-          if (!landmarks || landmarks.length < 17) return;
-
-          const rightShoulder = landmarks[12];
-          const rightElbow = landmarks[14];
-          const rightWrist = landmarks[16];
-          const leftShoulder = landmarks[11];
-          const leftElbow = landmarks[13];
-          const leftWrist = landmarks[15];
-
-          // Используем единый метод getArmState для обеих рук
-          let newRightState = getArmState(
-            rightShoulder,
-            rightElbow,
-            rightWrist,
-            minElbowAngle
-          );
-          let newLeftState = getArmState(
-            leftShoulder,
-            leftElbow,
-            leftWrist,
-            minElbowAngle
-          );
-
-          // Обрабатываем промежуточное состояние MIDDLE — сохраняем предыдущее
-          if (newRightState === "MIDDLE") newRightState = rightArmState;
-          if (newLeftState === "MIDDLE") newLeftState = leftArmState;
-
-          let repCounted = false;
-
-          if (handMode === "single") {
-            // Режим одной руки: засчитываем любое поднятие
-            if (rightArmState === "DOWN" && newRightState === "UP") {
-              repetitions++;
-              repCounted = true;
-            }
-
-            if (leftArmState === "DOWN" && newLeftState === "UP") {
-              repetitions++;
-              repCounted = true;
-            }
-
-            if (newRightState === "UP" || newRightState === "DOWN")
-              rightArmState = newRightState;
-
-            if (newLeftState === "UP" || newLeftState === "DOWN")
-              leftArmState = newLeftState;
-          } else {
-            // Режим двух рук: обе должны быть внизу, потом обе вверху
-            if (rightArmState === "DOWN" && leftArmState === "DOWN") {
-              if (newRightState === "UP" && newLeftState === "UP") {
-                repetitions++;
-                repCounted = true;
-                rightArmState = "UP";
-                leftArmState = "UP";
-              }
-            } else if (rightArmState === "UP" && leftArmState === "UP") {
-              if (newRightState === "DOWN" && newLeftState === "DOWN") {
-                rightArmState = "DOWN";
-                leftArmState = "DOWN";
-              }
-            }
-          }
-
-          if (repCounted) {
-            updateUI();
-            setStatus("Подъём!", "active");
-          }
-
-          updateHandIndicators();
-
-          // Обновляем текстовый статус
-          if (handMode === "single") {
-            const anyUp = rightArmState === "UP" || leftArmState === "UP";
-            const anyAngle =
-              rightArmState === "ANGLE" || leftArmState === "ANGLE";
-            if (anyAngle) {
-              setStatus("Угол неверный", "idle");
-            } else {
-              setStatus(
-                anyUp ? "Рука вверху" : "Рука внизу",
-                anyUp ? "active" : "idle"
-              );
-            }
-          } else {
-            if (rightArmState === "ANGLE" || leftArmState === "ANGLE") {
-              setStatus("Угол неверный", "idle");
-            } else {
-              setStatus(
-                rightArmState === "UP" ? "Обе вверху" : "Обе внизу",
-                rightArmState === "UP" ? "active" : "idle"
-              );
-            }
-          }
-        }
 
         // ---------- MediaPipe ----------
         async function initPose() {
@@ -841,26 +768,28 @@
           if (!pose) await initPose();
 
           const Camera = window.Camera;
+
+          // Запрашиваем камеру без ограничений по соотношению сторон,
+          // чтобы получить нативное разрешение камеры
           cameraInstance = new Camera(videoElement, {
             onFrame: async () => {
               if (pose && videoElement.readyState >= 2) {
                 await pose.send({ image: videoElement });
               }
             },
-            width: { ideal: MOBILE_WIDTH },
-            height: { ideal: MOBILE_HEIGHT },
             facingMode: "user",
             frameRate: 24,
           });
 
           try {
             await cameraInstance.start();
-            // Даем камере время на инициализацию, затем настраиваем размер
+
+            // Даём камере время на инициализацию, затем адаптируем контейнер
             setTimeout(() => {
               if (videoElement.videoWidth && videoElement.videoHeight) {
                 adjustVideoWrapperSize();
               }
-            }, 500);
+            }, 800);
           } catch (err) {
             console.error("Ошибка камеры:", err);
             alert("Не удалось получить доступ к камере.");
