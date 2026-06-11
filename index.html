@@ -11,7 +11,7 @@
       name="apple-mobile-web-app-status-bar-style"
       content="black-translucent"
     />
-    <title>Подсчёт рывков гири | MediaPipe Pose</title>
+    <title>Подсчёт толчков\рывков гири</title>
     <link
       rel="stylesheet"
       href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap"
@@ -156,6 +156,91 @@
         color: #ffd200;
       }
 
+      .fixation-mode {
+        display: flex;
+        gap: 4px;
+        margin-top: 10px;
+        background: rgba(16, 19, 28, 0.7);
+        border-radius: 40px;
+        padding: 3px;
+        width: 100%;
+      }
+
+      .fixation-btn {
+        flex: 1;
+        padding: 8px 6px;
+        border-radius: 36px;
+        border: none;
+        background: linear-gradient(135deg, #fffc61, #e2ff93);
+        color: #0a0c12;
+        font-weight: 600;
+        font-size: 0.7rem;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        white-space: nowrap;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+        touch-action: manipulation;
+      }
+
+      .fixation-btn.active {
+        background: linear-gradient(135deg, #f5a623, #c97a0a);
+        color: #0a0c12;
+        box-shadow: 0 4px 12px rgba(245, 166, 35, 0.35);
+        font-weight: 700;
+      }
+
+      .record-checkbox-wrapper {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 8px;
+        background: rgba(16, 19, 28, 0.6);
+        border-radius: 40px;
+        padding: 8px 16px;
+        border: 1px solid rgba(255, 255, 255, 0.06);
+        width: fit-content;
+        align-self: center;
+      }
+
+      .record-checkbox-wrapper input[type="checkbox"] {
+        -webkit-appearance: none;
+        width: 20px;
+        height: 20px;
+        background: #2d3342;
+        border-radius: 6px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        cursor: pointer;
+        position: relative;
+        flex-shrink: 0;
+      }
+
+      .record-checkbox-wrapper input[type="checkbox"]:checked {
+        background: linear-gradient(135deg, #e63946, #a61b2a);
+        border-color: rgba(255, 100, 100, 0.5);
+      }
+
+      .record-checkbox-wrapper input[type="checkbox"]:checked::after {
+        content: "✓";
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        color: white;
+        font-size: 12px;
+        font-weight: bold;
+      }
+
+      .record-checkbox-wrapper label {
+        font-size: 0.7rem;
+        font-weight: 600;
+        color: #cfd7ea;
+        cursor: pointer;
+        white-space: nowrap;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+      }
+
       input[type="range"] {
         width: 100%;
         height: 4px;
@@ -186,7 +271,6 @@
         box-shadow: 0 16px 28px rgba(0, 0, 0, 0.7);
         margin-bottom: 12px;
         background: #05070c;
-        /* Высота будет задаваться динамически через JS */
       }
 
       video,
@@ -198,7 +282,6 @@
         height: 100%;
         display: block;
         transform: scaleX(-1);
-        /* object-fit не нужен, так как размеры контейнера совпадают с видео */
       }
 
       canvas {
@@ -423,7 +506,7 @@
   <body>
     <div class="container">
       <h1>🏋️ Гиревой спорт</h1>
-      <div class="subtitle">MediaPipe Pose · отслеживание</div>
+
       <div class="hand-selector" id="handSelector">
         <button class="hand-btn active" data-hand="single">
           Одна рука (любая)
@@ -446,6 +529,14 @@
             value="150"
             step="1"
           />
+        </div>
+        <div class="fixation-mode" id="fixationSelector">
+          <button class="fixation-btn" data-mode="with-fixation">
+            С фиксацией
+          </button>
+          <button class="fixation-btn" data-mode="without-fixation">
+            Без фиксации
+          </button>
         </div>
       </div>
 
@@ -490,6 +581,11 @@
         </button>
         <button class="btn stop-btn" id="stopBtn"><span>⏹️</span> Стоп</button>
       </div>
+
+      <div class="record-checkbox-wrapper">
+        <input type="checkbox" id="recordCheckbox" />
+        <label for="recordCheckbox">Записывать экран</label>
+      </div>
     </div>
 
     <script
@@ -499,6 +595,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/streamsaver@2.0.6/StreamSaver.min.js"></script>
     <script src="core.js"></script>
     <script>
       (function () {
@@ -518,6 +615,9 @@
         const minAngleValue = document.getElementById("minAngleValue");
         const rightHandDot = document.getElementById("rightHandDot");
         const leftHandDot = document.getElementById("leftHandDot");
+        const recordCheckBox = document.getElementById("recordCheckbox");
+
+        const fixationBtns = document.querySelectorAll(".fixation-btn");
 
         // ---------- Глобальные переменные ----------
         let pose;
@@ -535,24 +635,18 @@
         let startTime = null;
         let elapsedSeconds = 0;
 
-        function formatTime(totalSeconds) {
-          const mins = Math.floor(totalSeconds / 60);
-          const secs = totalSeconds % 60;
-          return `${String(mins).padStart(2, "0")}:${String(secs).padStart(
-            2,
-            "0"
-          )}`;
-        }
-
         function updateTimerDisplay() {
           timerDisplay.textContent = formatTime(elapsedSeconds);
         }
 
         function startTimer() {
           if (timerInterval) return;
-          startTime = Date.now() - elapsedSeconds * 1000;
+          startTime = Date.now() + 15 * 1000;
           timerInterval = setInterval(() => {
             elapsedSeconds = Math.floor((Date.now() - startTime) / 1000);
+            if (elapsedSeconds > -0.5) {
+              startScreenRecord();
+            }
             updateTimerDisplay();
           }, 200);
         }
@@ -701,6 +795,17 @@
             handMode = btn.dataset.hand;
             resetAll();
             if (isActive) setStatus("Режим сменён", "idle");
+          });
+        });
+
+        fixationBtns.forEach((btn) => {
+          btn.addEventListener("click", () => {
+            if (btn.dataset.mode === "with-fixation") {
+              minAngleSlider.value = 150;
+            } else {
+              minAngleSlider.value = 90;
+            }
+            minAngleValue.textContent = minAngleSlider.value + "°";
           });
         });
 
@@ -998,6 +1103,8 @@
           if (isActive) return;
           try {
             if (!cameraInstance) await startCamera();
+            if (recordCheckBox.checked) initScreenRecord();
+
             resetAll();
             resetTimer();
             startTimer();
@@ -1015,6 +1122,7 @@
           if (!isActive) return;
           isActive = false;
           stopTimer();
+          stopScreenRecord();
           startBtn.disabled = false;
           stopBtn.disabled = true;
           setStatus("Остановлен", "idle");
@@ -1031,6 +1139,55 @@
           setStatus("Готов к старту", "idle");
           updateUI();
           updateTimerDisplay();
+        }
+
+        let screenStream;
+
+        async function initScreenRecord() {
+          if (screenStream) return;
+          screenStream = await navigator.mediaDevices.getDisplayMedia({
+            video: true,
+          });
+        }
+
+        let recorder;
+
+        async function startScreenRecord() {
+          if (!screenStream) return;
+          if (recorder) return;
+          // Создаём поток для записи
+          const fileStream = streamSaver.createWriteStream(
+            "kettlebell-training-" +
+              new Date().toISOString().replace(/[:.]/g, "-") +
+              ".webm",
+            {
+              size: null, // Неизвестный размер
+            }
+          );
+
+          const writer = fileStream.getWriter();
+
+          recorder = new MediaRecorder(screenStream);
+
+          recorder.ondataavailable = async (e) => {
+            if (e.data.size > 0) {
+              const buffer = await e.data.arrayBuffer();
+              await writer.write(new Uint8Array(buffer));
+            }
+          };
+
+          recorder.onstop = async () => {
+            await writer.close();
+            stream.getTracks().forEach((track) => track.stop());
+          };
+
+          recorder.start(1000); // Пишем чанками каждую секунду
+        }
+
+        function stopScreenRecord() {
+          if (!recorder) return;
+          recorder.stop();
+          recorder = undefined;
         }
 
         bootstrap().catch((err) => console.error("Ошибка инициализации:", err));

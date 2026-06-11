@@ -161,4 +161,26 @@ function processPoseForReps(landmarks, minElbowAngle, handMode) {
 
 }
 
+function formatTime(totalSeconds) {
+    // Определяем знак
+    const isNegative = totalSeconds < 0;
+    
+    // Берем абсолютное значение для расчетов
+    const absSeconds = Math.abs(totalSeconds);
+    
+    // Вычисляем минуты и секунды
+    const minutes = Math.floor(absSeconds / 60);
+    const seconds = absSeconds % 60;
+    
+    // Форматируем с ведущими нулями
+    const formattedMinutes = String(minutes).padStart(2, '0');
+    const formattedSeconds = String(seconds).padStart(2, '0');
+    
+    // Собираем результат
+    const result = `${formattedMinutes}:${formattedSeconds}`;
+    
+    // Добавляем минус если нужно
+    return isNegative ? `-${result}` : result;
+}
+
 
