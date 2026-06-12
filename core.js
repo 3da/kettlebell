@@ -162,25 +162,25 @@ function processPoseForReps(landmarks, minElbowAngle, handMode) {
 }
 
 function formatTime(totalSeconds) {
-    // Определяем знак
+    // Обрабатываем отрицательное время
     const isNegative = totalSeconds < 0;
-    
-    // Берем абсолютное значение для расчетов
-    const absSeconds = Math.abs(totalSeconds);
-    
+    const absoluteSeconds = Math.abs(totalSeconds);
+
+    // Округляем до целых секунд
+    const totalSecs = Math.round(absoluteSeconds);
+
     // Вычисляем минуты и секунды
-    const minutes = Math.floor(absSeconds / 60);
-    const seconds = absSeconds % 60;
-    
+    const minutes = Math.floor(totalSecs / 60);
+    const seconds = totalSecs % 60;
+
     // Форматируем с ведущими нулями
     const formattedMinutes = String(minutes).padStart(2, '0');
     const formattedSeconds = String(seconds).padStart(2, '0');
-    
+
     // Собираем результат
-    const result = `${formattedMinutes}:${formattedSeconds}`;
-    
-    // Добавляем минус если нужно
-    return isNegative ? `-${result}` : result;
+    const timeString = `${formattedMinutes}:${formattedSeconds}`;
+
+    return isNegative && absoluteSeconds > 0.5 ? `-${timeString}` : timeString;
 }
 
 

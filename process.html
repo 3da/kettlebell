@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover"
+    />
+    <title>Фитнес трекер — MediaPipe Pose</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background: #000;
+        font-family: "Segoe UI", Roboto, system-ui, sans-serif;
+        touch-action: manipulation;
+      }
+
+      .app-container {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #000;
+      }
+
+      canvas {
+        display: block;
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        background: #000;
+      }
+
+      /* Полупрозрачная кнопка Stop */
+      .stop-button {
+        position: absolute;
+        bottom: 25px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 20;
+        background: rgba(220, 38, 38, 0.25); /* Очень прозрачный красный */
+        backdrop-filter: blur(16px); /* Сильное размытие фона */
+        -webkit-backdrop-filter: blur(16px);
+        border: 1.5px solid rgba(255, 255, 255, 0.3);
+        color: rgba(255, 255, 255, 0.9);
+        font-weight: 600;
+        font-size: 1.4rem;
+        padding: 12px 44px;
+        border-radius: 60px;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+        cursor: pointer;
+        transition: all 0.25s ease;
+        line-height: 1.2;
+        text-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+      }
+
+      .stop-button:hover {
+        background: rgba(220, 38, 38, 0.4);
+        border-color: rgba(255, 255, 255, 0.5);
+      }
+
+      .stop-button:active {
+        background: rgba(185, 28, 28, 0.5);
+        transform: translateX(-50%) scale(0.95);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+      }
+
+      video {
+        display: none;
+      }
+
+      .loading-indicator {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        color: white;
+        background: rgba(0, 0, 0, 0.7);
+        padding: 12px 24px;
+        border-radius: 30px;
+        font-size: 1.2rem;
+        z-index: 30;
+        backdrop-filter: blur(8px);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app-container">
+      <video id="inputVideo" playsinline autoplay muted></video>
+      <canvas id="outputCanvas"></canvas>
+      <button id="stopButton" class="stop-button">⏹️ STOP</button>
+      <div id="loadingMessage" class="loading-indicator">
+        Загрузка камеры и модели...
+      </div>
+    </div>
+
+    <!-- MediaPipe libraries -->
+    <script
+      src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"
+      crossorigin="anonymous"
+    ></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/streamsaver@2.0.6/StreamSaver.min.js"></script>
+    <script src="core.js"></script>
+
+    <script>
+      (function () {
+        const videoElement = document.getElementById("inputVideo");
+        const canvasElement = document.getElementById("outputCanvas");
+        const ctx = canvasElement.getContext("2d");
+        const stopButton = document.getElementById("stopButton");
+        const loadingMessage = document.getElementById("loadingMessage");
+
+        let frameCount = 0;
+        let FRAME_SKIP = 0;
+
+        let minElbowAngle = 155;
+
+        const queryString = window.location.search;
+        const urlParams = new URLSearchParams(queryString);
+
+        let handMode = urlParams.get("handMode") ?? "signle";
+        let recordVideo = !!urlParams.get("record");
+
+        let pose;
+        let cameraInstance = null;
+        let animationFrameId = null;
+        let isCameraActive = false;
+
+        let timerSeconds = -15;
+        let lastTimestamp = 0;
+
+        let latestPoseLandmarks = null;
+
+        const MIRROR_VIDEO = true;
+
+        function drawOnCanvas() {
+          if (!canvasElement || !ctx || !videoElement) return;
+
+          const canvasWidth = canvasElement.width;
+          const canvasHeight = canvasElement.height;
+
+          ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+
+          ctx.save();
+          if (MIRROR_VIDEO) {
+            ctx.translate(canvasWidth, 0);
+            ctx.scale(-1, 1);
+          }
+
+          const videoWidth = videoElement.videoWidth || 640;
+          const videoHeight = videoElement.videoHeight || 480;
+
+          if (videoWidth && videoHeight) {
+            const videoAspect = videoWidth / videoHeight;
+            const canvasAspect = canvasWidth / canvasHeight;
+
+            let drawWidth, drawHeight, offsetX, offsetY;
+
+            if (videoAspect > canvasAspect) {
+              drawWidth = canvasWidth;
+              drawHeight = canvasWidth / videoAspect;
+              offsetX = 0;
+              offsetY = (canvasHeight - drawHeight) / 2;
+            } else {
+              drawHeight = canvasHeight;
+              drawWidth = canvasHeight * videoAspect;
+              offsetX = (canvasWidth - drawWidth) / 2;
+              offsetY = 0;
+            }
+
+            ctx.drawImage(
+              videoElement,
+              offsetX,
+              offsetY,
+              drawWidth,
+              drawHeight
+            );
+          } else {
+            ctx.drawImage(videoElement, 0, 0, canvasWidth, canvasHeight);
+          }
+
+          ctx.restore();
+
+          if (latestPoseLandmarks && latestPoseLandmarks.length > 0) {
+            const videoW = videoElement.videoWidth || 640;
+            const videoH = videoElement.videoHeight || 480;
+            if (videoW && videoH) {
+              const videoAspect = videoW / videoH;
+              const canvasAspect = canvasWidth / canvasHeight;
+
+              let drawWidth, drawHeight, offsetX, offsetY;
+
+              if (videoAspect > canvasAspect) {
+                drawWidth = canvasWidth;
+                drawHeight = canvasWidth / videoAspect;
+                offsetX = 0;
+                offsetY = (canvasHeight - drawHeight) / 2;
+              } else {
+                drawHeight = canvasHeight;
+                drawWidth = canvasHeight * videoAspect;
+                offsetX = (canvasWidth - drawWidth) / 2;
+                offsetY = 0;
+              }
+
+              drawPoseLandmarksCustom(
+                ctx,
+                latestPoseLandmarks,
+                videoW,
+                videoH,
+                canvasWidth,
+                canvasHeight,
+                drawWidth,
+                drawHeight,
+                offsetX,
+                offsetY,
+                MIRROR_VIDEO
+              );
+            }
+          }
+
+          ctx.save();
+          ctx.font = 'bold 28px "Segoe UI", Roboto, sans-serif';
+          ctx.fillStyle = "white";
+          ctx.shadowColor = "rgba(0,0,0,0.8)";
+          ctx.shadowBlur = 10;
+          ctx.shadowOffsetX = 2;
+          ctx.shadowOffsetY = 2;
+
+          const timerText = formatTime(timerSeconds);
+          const repText = `Повторения: ${state.repetitions}`;
+
+          ctx.textAlign = "left";
+          ctx.fillText(`⏱️ ${timerText}`, 20, canvasHeight - 45);
+
+          ctx.textAlign = "right";
+          ctx.fillText(`🔄 ${repText}`, canvasWidth - 20, canvasHeight - 45);
+
+          ctx.restore();
+        }
+
+        function drawPoseLandmarksCustom(
+          ctx,
+          landmarks,
+          videoW,
+          videoH,
+          canvasW,
+          canvasH,
+          drawW,
+          drawH,
+          offsetX,
+          offsetY,
+          mirror
+        ) {
+          if (!landmarks || landmarks.length === 0) return;
+
+          const connections = [
+            [11, 12],
+            [12, 24],
+            [24, 23],
+            [23, 11],
+            [11, 13],
+            [13, 15],
+            [15, 17],
+            [17, 19],
+            [19, 15],
+            [12, 14],
+            [14, 16],
+            [16, 18],
+            [18, 20],
+            [20, 16],
+            [23, 25],
+            [25, 27],
+            [27, 29],
+            [29, 31],
+            [31, 27],
+            [24, 26],
+            [26, 28],
+            [28, 30],
+            [30, 32],
+            [32, 28],
+            [11, 23],
+            [12, 24],
+          ];
+
+          function getPoint(landmark) {
+            let x = landmark.x * videoW;
+            let y = landmark.y * videoH;
+
+            let canvasX = (x / videoW) * drawW + offsetX;
+            let canvasY = (y / videoH) * drawH + offsetY;
+
+            if (mirror) {
+              canvasX = canvasW - canvasX;
+            }
+
+            return { x: canvasX, y: canvasY };
+          }
+
+          ctx.save();
+          ctx.strokeStyle = "#00FF88";
+          ctx.lineWidth = 3;
+          ctx.fillStyle = "#FF3366";
+          ctx.shadowColor = "rgba(0,0,0,0.7)";
+          ctx.shadowBlur = 4;
+
+          ctx.beginPath();
+          for (const [startIdx, endIdx] of connections) {
+            if (landmarks[startIdx] && landmarks[endIdx]) {
+              const start = getPoint(landmarks[startIdx]);
+              const end = getPoint(landmarks[endIdx]);
+              ctx.moveTo(start.x, start.y);
+              ctx.lineTo(end.x, end.y);
+            }
+          }
+          ctx.stroke();
+
+          landmarks.forEach((landmark, index) => {
+            if (index <= 10) return;
+            const point = getPoint(landmark);
+            ctx.beginPath();
+            ctx.arc(point.x, point.y, 4, 0, 2 * Math.PI);
+            ctx.fillStyle = "#FFD700";
+            ctx.fill();
+            ctx.strokeStyle = "black";
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+          });
+
+          ctx.restore();
+        }
+
+        function renderLoop(timestamp) {
+          if (!isCameraActive) return;
+
+          if (lastTimestamp !== 0) {
+            const delta = (timestamp - lastTimestamp) / 1000;
+            if (delta > 0 && delta < 1) {
+              timerSeconds += delta;
+              if (timerSeconds > -1) startRecord();
+            }
+          }
+          lastTimestamp = timestamp;
+
+          drawOnCanvas();
+
+          animationFrameId = requestAnimationFrame(renderLoop);
+        }
+
+        function onPoseResults(results) {
+          if (results.poseLandmarks) {
+            latestPoseLandmarks = results.poseLandmarks;
+            if (timerSeconds > -0.5)
+              processPoseForReps(
+                results.poseLandmarks,
+                minElbowAngle,
+                handMode
+              );
+          } else {
+            latestPoseLandmarks = null;
+          }
+        }
+
+        function initPose() {
+          pose = new Pose({
+            locateFile: (file) =>
+              `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`,
+          });
+
+          // Определяем мобильное устройство
+          const isMobile =
+            /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+              navigator.userAgent
+            );
+
+          if (isMobile) FRAME_SKIP = 2;
+
+          pose.setOptions({
+            modelComplexity: isMobile ? 0 : 1, // 0 для мобильных (меньше точность, быстрее)
+            smoothLandmarks: !isMobile, // Отключаем сглаживание на мобильных
+            enableSegmentation: false,
+            smoothSegmentation: false,
+            minDetectionConfidence: isMobile ? 0.3 : 0.5, // Ниже порог для мобильных
+            minTrackingConfidence: isMobile ? 0.3 : 0.5,
+          });
+
+          pose.onResults(onPoseResults);
+
+          console.log(
+            `MediaPipe Pose инициализирован (${
+              isMobile ? "mobile" : "desktop"
+            } режим)`
+          );
+        }
+
+        function startRecord() {
+          if (recorder) return;
+          if (!recordVideo) return;
+          const screenStream = canvasElement.captureStream(30);
+
+          const fileStream = streamSaver.createWriteStream(
+            "kettlebell-training-" +
+              new Date().toISOString().replace(/[:.]/g, "-") +
+              ".webm",
+            {
+              size: null, // Неизвестный размер
+            }
+          );
+
+          const writer = fileStream.getWriter();
+
+          recorder = new MediaRecorder(screenStream);
+
+          recorder.ondataavailable = async (e) => {
+            if (e.data.size > 0) {
+              const buffer = await e.data.arrayBuffer();
+              await writer.write(new Uint8Array(buffer));
+            }
+          };
+
+          recorder.onstop = async () => {
+            await writer.close();
+            stream.getTracks().forEach((track) => track.stop());
+          };
+
+          recorder.start(1000); // Пишем чанками каждую секунду
+        }
+
+        async function startCamera() {
+          try {
+            const stream = await navigator.mediaDevices.getUserMedia({
+              video: {
+                facingMode: "user",
+                width: { ideal: 1280 },
+                height: { ideal: 720 },
+                aspectRatio: { ideal: 1.777 },
+              },
+              audio: false,
+            });
+
+            videoElement.srcObject = stream;
+            videoElement.play();
+
+            await new Promise((resolve) => {
+              videoElement.onloadedmetadata = () => {
+                resolve();
+              };
+            });
+
+            resizeCanvas();
+            window.addEventListener("resize", resizeCanvas);
+
+            const camera = new Camera(videoElement, {
+              onFrame: async () => {
+                frameCount++;
+                if (FRAME_SKIP > 0 && frameCount % FRAME_SKIP !== 0) return;
+
+                if (pose && videoElement.readyState >= 2) {
+                  await pose.send({ image: videoElement });
+                }
+              },
+              width: videoElement.videoWidth || 1280,
+              height: videoElement.videoHeight || 720,
+            });
+
+            cameraInstance = camera;
+            await camera.start();
+
+            console.log("Камера запущена (фронтальная)");
+
+            if (loadingMessage) {
+              loadingMessage.style.display = "none";
+            }
+
+            isCameraActive = true;
+            lastTimestamp = 0;
+            timerSeconds = -15;
+
+            animationFrameId = requestAnimationFrame(renderLoop);
+          } catch (error) {
+            console.error("Ошибка доступа к камере:", error);
+            if (loadingMessage) {
+              loadingMessage.textContent = "Ошибка камеры. Разрешите доступ.";
+              loadingMessage.style.background = "rgba(200,0,0,0.8)";
+            }
+          }
+        }
+
+        function resizeCanvas() {
+          canvasElement.width = window.innerWidth;
+          canvasElement.height = window.innerHeight;
+        }
+
+        let recorder;
+
+        function stopAll() {
+          if (recorder) recorder.stop();
+
+          recorder = undefined;
+
+          if (animationFrameId) {
+            cancelAnimationFrame(animationFrameId);
+            animationFrameId = null;
+          }
+
+          if (cameraInstance) {
+            cameraInstance.stop();
+            cameraInstance = null;
+          }
+
+          if (videoElement.srcObject) {
+            const tracks = videoElement.srcObject.getTracks();
+            tracks.forEach((track) => track.stop());
+            videoElement.srcObject = null;
+          }
+
+          isCameraActive = false;
+
+          ctx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+          ctx.fillStyle = "black";
+          ctx.fillRect(0, 0, canvasElement.width, canvasElement.height);
+          ctx.fillStyle = "white";
+          ctx.font = "24px sans-serif";
+          ctx.textAlign = "center";
+          ctx.fillText(
+            "Трансляция остановлена",
+            canvasElement.width / 2,
+            canvasElement.height / 2
+          );
+
+          console.log("Все остановлено");
+          setTimeout(() => {
+            window.location.href = "index.html";
+          }, 500);
+        }
+
+        stopButton.addEventListener("click", stopAll);
+
+        async function startApp() {
+          initPose();
+          await startCamera();
+        }
+
+        window.addEventListener("load", startApp);
+
+        window.addEventListener("beforeunload", () => {
+          stopAll();
+        });
+      })();
+    </script>
+  </body>
+</html>
