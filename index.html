@@ -514,7 +514,7 @@
         <button class="hand-btn" data-hand="both">Две руки вместе</button>
       </div>
 
-      <div class="angle-settings">
+      <div class="angle-settings" style="display: none">
         <div class="angle-settings-title">🎯 Минимальный угол в локте</div>
         <div class="angle-slider-group">
           <div class="angle-slider-label">
@@ -632,7 +632,7 @@
         let isActive = false;
 
         let handMode = "single"; // 'single' или 'both'
-        let minElbowAngle = 150;
+        let minElbowAngle = 155;
 
         const FRAME_SKIP = 2;
         let frameCounter = 0;
@@ -808,11 +808,12 @@
         fixationBtns.forEach((btn) => {
           btn.addEventListener("click", () => {
             if (btn.dataset.mode === "with-fixation") {
-              minAngleSlider.value = 150;
+              minElbowAngle = 150;
             } else {
-              minAngleSlider.value = 90;
+              minElbowAngle = 90;
             }
-            minAngleValue.textContent = minAngleSlider.value + "°";
+            minAngleSlider.value = minElbowAngle;
+            minAngleValue.textContent = minElbowAngle + "°";
           });
         });
 
