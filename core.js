@@ -21,8 +21,6 @@ function getArmState(shoulder, elbow, wrist, minElbowAngle) {
     // Вычисляем относительную позицию запястья по Y
     const relativeY = wrist.y - shoulder.y;
 
-    console.log(relativeY);
-
     // Проверяем угол в локте
     const angle = calculateElbowAngle(shoulder, elbow, wrist);
 
