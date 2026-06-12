@@ -182,3 +182,203 @@ function formatTime(totalSeconds) {
 }
 
 
+
+
+// ---------- Камера ----------
+async function getCameraStream() {
+    const Camera = window.Camera;
+
+    // Получаем список доступных камер
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    const videoDevices = devices.filter(
+        (device) => device.kind === "videoinput"
+    );
+
+    // Ищем широкоугольную фронтальную камеру
+    let targetDeviceId = null;
+
+    for (const device of videoDevices) {
+        const capabilities = await getCameraCapabilities(device.deviceId);
+
+        // Проверяем, является ли камера фронтальной и широкоугольной
+        if (
+            device.label.toLowerCase().includes("front") ||
+            device.label.toLowerCase().includes("передняя")
+        ) {
+            // Проверяем характеристики широкоугольной камеры
+            if (capabilities && capabilities.facingMode === "user") {
+                // Широкоугольные камеры обычно имеют угол обзора > 80 градусов
+                // или специальные метки в названии
+                if (
+                    device.label.toLowerCase().includes("wide") ||
+                    device.label.toLowerCase().includes("ultra wide") ||
+                    device.label.toLowerCase().includes("широкоугольная") ||
+                    capabilities.viewAngle > 80 ||
+                    // На некоторых устройствах широкоугольная камера имеет разрешение выше
+                    (capabilities.width && capabilities.width.max >= 3840)
+                ) {
+                    targetDeviceId = device.deviceId;
+                    break;
+                }
+            }
+        }
+    }
+
+    // Если не нашли специфичную широкоугольную камеру,
+    // используем первую фронтальную с наибольшим углом обзора
+    if (!targetDeviceId) {
+        let maxViewAngle = 0;
+
+        for (const device of videoDevices) {
+            const capabilities = await getCameraCapabilities(device.deviceId);
+
+            if (capabilities && capabilities.facingMode === "user") {
+                if (capabilities.viewAngle > maxViewAngle) {
+                    maxViewAngle = capabilities.viewAngle;
+                    targetDeviceId = device.deviceId;
+                }
+            }
+        }
+    }
+
+
+    if (targetDeviceId) {
+        return await navigator.mediaDevices.getUserMedia({
+            video: {
+                targetDeviceId
+            },
+            audio: false,
+        });
+    }
+
+
+
+    return await navigator.mediaDevices.getUserMedia({
+        video: {
+            facingMode: "user",
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+            aspectRatio: { ideal: 1.777 },
+        },
+        audio: false,
+    });
+
+}
+
+// Вспомогательная функция для получения характеристик камеры
+async function getCameraCapabilities(deviceId) {
+    try {
+        // Создаем временный stream для проверки capabilities
+        const stream = await navigator.mediaDevices.getUserMedia({
+            video: {
+                deviceId: { exact: deviceId },
+                width: { ideal: 4096 }, // Запрашиваем максимальное разрешение
+                height: { ideal: 2160 },
+            },
+        });
+
+        const track = stream.getVideoTracks()[0];
+        const capabilities = track.getCapabilities
+            ? track.getCapabilities()
+            : null;
+
+        // Останавливаем временный поток
+        track.stop();
+
+        // Дополнительная информация из метаданных
+        const settings = track.getSettings ? track.getSettings() : null;
+
+        return {
+            ...capabilities,
+            width: capabilities?.width,
+            height: capabilities?.height,
+            facingMode: track.getSettings?.()?.facingMode || "unknown",
+            viewAngle: calculateViewAngle(settings?.width, settings?.height),
+        };
+    } catch (error) {
+        console.warn(
+            "Не удалось получить capabilities для камеры:",
+            deviceId,
+            error
+        );
+        return null;
+    }
+}
+
+// Функция для расчета угла обзора на основе разрешения
+function calculateViewAngle(width, height) {
+    // Примерный расчет угла обзора на основе разрешения
+    // Широкоугольные камеры обычно имеют соотношение сторон 16:9 или шире
+    if (!width || !height) return 0;
+
+    const aspectRatio = width / height;
+
+    // Эвристика: чем шире соотношение, тем больше угол обзора
+    if (aspectRatio >= 2.0) return 120; // Сверхширокоугольная
+    if (aspectRatio >= 1.77) return 90; // Широкоугольная (16:9)
+    if (aspectRatio >= 1.6) return 75; // Стандартная широкая
+    return 60; // Стандартная
+}
+
+// Альтернативный метод: прямой доступ через MediaStream API (более надежный)
+async function startCameraAlternative() {
+    if (cameraInstance) return;
+    if (!pose) await initPose();
+
+    try {
+        // Получаем доступ к камере через MediaStream API
+        const constraints = {
+            video: {
+                facingMode: "user",
+                width: { min: 1920, ideal: 3840, max: 4096 },
+                height: { min: 1080, ideal: 2160, max: 2160 },
+                aspectRatio: { ideal: 16 / 9 },
+            },
+        };
+
+        // Пытаемся получить доступ с высоким разрешением (широкоугольные камеры)
+        let stream;
+        try {
+            stream = await navigator.mediaDevices.getUserMedia(constraints);
+        } catch (e) {
+            // Если не получилось, пробуем с меньшими требованиями
+            constraints.video.width = { ideal: 1920 };
+            constraints.video.height = { ideal: 1080 };
+            stream = await navigator.mediaDevices.getUserMedia(constraints);
+        }
+
+        videoElement.srcObject = stream;
+        await videoElement.play();
+
+        console.log("Камера запущена:", {
+            width: videoElement.videoWidth,
+            height: videoElement.videoHeight,
+            aspectRatio: videoElement.videoWidth / videoElement.videoHeight,
+        });
+
+        // Если библиотека Camera поддерживает stream
+        const Camera = window.Camera;
+        cameraInstance = new Camera(videoElement, {
+            onFrame: async () => {
+                if (pose && videoElement.readyState >= 2) {
+                    await pose.send({ image: videoElement });
+                }
+            },
+            frameRate: 24,
+        });
+
+        await cameraInstance.start();
+
+        setTimeout(() => {
+            if (videoElement.videoWidth && videoElement.videoHeight) {
+                adjustVideoWrapperSize();
+            }
+        }, 800);
+    } catch (err) {
+        console.error("Ошибка камеры:", err);
+        alert("Не удалось получить доступ к камере.");
+        throw err;
+    }
+}
+
+
