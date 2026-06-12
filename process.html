@@ -95,6 +95,29 @@
         z-index: 30;
         backdrop-filter: blur(8px);
       }
+
+      @media (max-width: 768px) {
+        .stop-button {
+          bottom: 20px;
+          font-size: 1rem;
+          padding: 10px 32px;
+          letter-spacing: 1.5px;
+          border-radius: 50px;
+          border-width: 1px;
+          box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
+        }
+      }
+
+      @media (max-width: 480px) {
+        .stop-button {
+          bottom: 16px;
+          font-size: 0.85rem;
+          padding: 8px 24px;
+          letter-spacing: 1px;
+          border-radius: 40px;
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+      }
     </style>
   </head>
   <body>
@@ -235,7 +258,7 @@
           }
 
           ctx.save();
-          ctx.font = 'bold 28px "Segoe UI", Roboto, sans-serif';
+          ctx.font = 'bold 18px "Segoe UI", Roboto, sans-serif';
           ctx.fillStyle = "white";
           ctx.shadowColor = "rgba(0,0,0,0.8)";
           ctx.shadowBlur = 10;
@@ -408,10 +431,10 @@
           );
         }
 
-        function startRecord() {
-          if (recorder) return;
+        let writer;
+
+        function initRecord() {
           if (!recordVideo) return;
-          const screenStream = canvasElement.captureStream(30);
 
           const fileStream = streamSaver.createWriteStream(
             "kettlebell-training-" +
@@ -422,7 +445,23 @@
             }
           );
 
-          const writer = fileStream.getWriter();
+          writer = fileStream.getWriter();
+        }
+
+        function startRecord() {
+          if (recorder) return;
+          if (!recordVideo) return;
+          if (!writer) return;
+          const screenStream = canvasElement.captureStream(30);
+
+          const fileStream = streamSaver.createWriteStream(
+            "kettlebell-training-" +
+              new Date().toISOString().replace(/[:.]/g, "-") +
+              ".webm",
+            {
+              size: null, // Неизвестный размер
+            }
+          );
 
           recorder = new MediaRecorder(screenStream);
 
@@ -554,6 +593,7 @@
         async function startApp() {
           initPose();
           await startCamera();
+          initRecord();
         }
 
         window.addEventListener("load", startApp);
