@@ -74,7 +74,7 @@
 
       .stop-button:active {
         background: rgba(185, 28, 28, 0.5);
-        transform: translateX(-50%) scale(0.95);
+        transform: scale(0.95);
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
       }
 
@@ -380,7 +380,7 @@
 
           drawOnCanvas();
 
-          animationFrameId = requestAnimationFrame(renderLoop);
+          videoElement.requestVideoFrameCallback(renderLoop.bind(this));
         }
 
         function onPoseResults(results) {
@@ -508,7 +508,9 @@
             lastTimestamp = 0;
             timerSeconds = -15;
 
-            animationFrameId = requestAnimationFrame(renderLoop);
+            videoElement.requestVideoFrameCallback(renderLoop.bind(this));
+
+            //animationFrameId = requestAnimationFrame(renderLoop);
           } catch (error) {
             console.error("Ошибка доступа к камере:", error);
             if (loadingMessage) {
