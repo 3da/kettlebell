@@ -375,7 +375,6 @@
             const delta = (timestamp - lastTimestamp) / 1000;
             if (delta > 0 && delta < 1) {
               timerSeconds += delta;
-              if (timerSeconds > -1) startRecord();
             }
           }
           lastTimestamp = timestamp;
@@ -433,7 +432,7 @@
 
         let writer;
 
-        function initRecord() {
+        function startRecord() {
           if (!recordVideo) return;
 
           const fileStream = streamSaver.createWriteStream(
@@ -446,22 +445,10 @@
           );
 
           writer = fileStream.getWriter();
-        }
 
-        function startRecord() {
-          if (recorder) return;
-          if (!recordVideo) return;
-          if (!writer) return;
+          writer.write(new Uint8Array([]));
+
           const screenStream = canvasElement.captureStream(30);
-
-          const fileStream = streamSaver.createWriteStream(
-            "kettlebell-training-" +
-              new Date().toISOString().replace(/[:.]/g, "-") +
-              ".webm",
-            {
-              size: null, // Неизвестный размер
-            }
-          );
 
           recorder = new MediaRecorder(screenStream);
 
@@ -477,7 +464,7 @@
             stream.getTracks().forEach((track) => track.stop());
           };
 
-          recorder.start(1000); // Пишем чанками каждую секунду
+          recorder.start(500);
         }
 
         async function startCamera() {
@@ -593,7 +580,7 @@
         async function startApp() {
           initPose();
           await startCamera();
-          initRecord();
+          startRecord();
         }
 
         window.addEventListener("load", startApp);
