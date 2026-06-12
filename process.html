@@ -46,11 +46,11 @@
       .stop-button {
         position: absolute;
         bottom: 25px;
-        left: 50%;
-        transform: translateX(-50%);
+        right: 25px; /* Меняем left: 50% на right: 25px */
+        transform: none; /* Убираем transform: translateX(-50%) */
         z-index: 20;
-        background: rgba(220, 38, 38, 0.25); /* Очень прозрачный красный */
-        backdrop-filter: blur(16px); /* Сильное размытие фона */
+        background: rgba(220, 38, 38, 0.25);
+        backdrop-filter: blur(16px);
         -webkit-backdrop-filter: blur(16px);
         border: 1.5px solid rgba(255, 255, 255, 0.3);
         color: rgba(255, 255, 255, 0.9);
